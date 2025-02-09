@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "bingo"
+version = "0.1.0"
+description = ""
+authors = ["Offending Commit <offendingcommit@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+nicegui = "^2.11.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
