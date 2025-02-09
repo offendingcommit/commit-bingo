@@ -24,6 +24,7 @@ board = [shuffled_phrases[i:i+5] for i in range(0, 25, 5)]
 clicked_tiles = set()
 tile_buttons = {}  # {(row, col): chip}
 tile_icons = {}  # {(row, col): icon reference}
+admin_checkboxes = {}  # {(row, col): admin checkbox element}
 
 def split_phrase_into_lines(phrase: str) -> list:
     """
@@ -78,14 +79,11 @@ def toggle_tile(row, col):
     if key in clicked_tiles:
         logging.debug(f"Tile at {key} unclicked")
         clicked_tiles.remove(key)
-        tile_buttons[key].style("background: #facc15; border: none; color: black;")
-        tile_icons[key].style("display: none;")
     else:
         logging.debug(f"Tile at {key} clicked")
         clicked_tiles.add(key)
-        tile_buttons[key].style("background: #22c55e; color: white; border: none;")
-        tile_icons[key].style("display: block;")
     check_winner()
+    sync_board_state()
 
 # Check for Bingo win condition
 def check_winner():
@@ -96,15 +94,73 @@ def check_winner():
     if all((i, i) in clicked_tiles for i in range(5)) or all((i, 4 - i) in clicked_tiles for i in range(5)):
         ui.notify("BINGO!", color="green", duration=5)
 
+def sync_board_state():
+    # Sync the styles of each tile according to the global clicked_tiles
+    for r in range(5):
+        for c in range(5):
+            key = (r, c)
+            # Skip updating the FREE MEAT cell
+            if board[r][c].upper() == "FREE MEAT":
+                continue
+            if key in clicked_tiles:
+                tile_buttons[key].style("background: #22c55e; color: white; border: none;")
+                tile_icons[key].style("display: block;")
+            else:
+                tile_buttons[key].style("background: #facc15; border: none; color: black;")
+                tile_icons[key].style("display: none;")
+            tile_buttons[key].update()
+            tile_icons[key].update()
+    # --- New: update admin panel checkboxes when board state syncs ---
+    sync_admin_checkboxes()
+    update_admin_visibility()
+
+def sync_admin_checkboxes():
+    """
+    Sync the values in both copies of each admin checkbox with the global clicked_tiles.
+    """
+    for key, chks in admin_checkboxes.items():
+        new_value = key in clicked_tiles
+        if chks["left"].value != new_value:
+            chks["left"].value = new_value
+            chks["left"].update()
+        if chks["right"].value != new_value:
+            chks["right"].value = new_value
+            chks["right"].update()
+
+def update_admin_visibility():
+    """
+    Bind the visibility of the admin checkboxes:
+       - left copy is visible only when unchecked (value False)
+       - right copy is visible only when checked (value True)
+    """
+    for key, chks in admin_checkboxes.items():
+        val = chks["left"].value  # both copies hold the same value
+        chks["left"].visible = not val  # show left box only when unchecked
+        chks["right"].visible = val     # show right box only when checked
+        chks["left"].update()
+        chks["right"].update()
+
+def admin_checkbox_change(e, key):
+    # When a checkbox in the admin page is toggled, update the global clicked_tiles
+    if e.value:
+        clicked_tiles.add(key)
+    else:
+        clicked_tiles.discard(key)
+    sync_board_state()
+
 # Set up NiceGUI page and head elements
 ui.page("/")
 ui.add_head_html('<link href="https://fonts.cdnfonts.com/css/super-carnival" rel="stylesheet">')
 ui.add_head_html('<script src="https://cdn.jsdelivr.net/npm/fitty@2.3.6/dist/fitty.min.js"></script>')
+ui.add_head_html('<style>body { background-color: #100079; }</style>')
 
 with ui.element("div").classes("w-full max-w-3xl mx-auto"):
-    ui.label("COMMIT BINGO!").classes("fit-header text-center").style("font-family: 'Super Carnival', sans-serif;")
+    ui.label("COMMIT BINGO!").classes("fit-header text-center").style("font-family: 'Super Carnival', sans-serif; color: #0CB2B3;")
 
 create_bingo_board()
+
+# Add a timer that calls sync_board_state every 1 second to push state updates to all clients
+ui.timer(1, sync_board_state)
 
 with ui.element("div").classes("w-full mt-4"):
     ui.label(f"Seed: {today_seed}").classes("text-md text-gray-300 text-center")
@@ -119,4 +175,45 @@ ui.add_head_html("""<script>
     fitty('.fit-header', { multiLine: true, maxSize: 200 });
   });
 </script>""")
-ui.run(port=8080, title="Commit Bingo", dark=True)
+
+@ui.page("/admin")
+def admin_page():
+    with ui.column().classes("w-full max-w-xl mx-auto p-4"):
+        ui.label("Admin Panel (Seed Phrases)").classes("text-h4 text-center")
+
+        # Create checkboxes for each seed phrase if not already created.
+        for r in range(5):
+            for c in range(5):
+                key = (r, c)
+                phrase = board[r][c]
+                if key not in admin_checkboxes:
+                    def on_admin_checkbox_change(e, key=key):
+                        if e.value:
+                            clicked_tiles.add(key)
+                        else:
+                            clicked_tiles.discard(key)
+                        sync_board_state()
+                        update_admin_visibility()
+                    left_chk = ui.checkbox(phrase, value=(key in clicked_tiles), on_change=on_admin_checkbox_change)
+                    right_chk = ui.checkbox(phrase, value=(key in clicked_tiles), on_change=on_admin_checkbox_change)
+                    admin_checkboxes[key] = {"left": left_chk, "right": right_chk}
+
+                    
+                    left_chk.on("change", on_admin_checkbox_change)
+                    right_chk.on("change", on_admin_checkbox_change)
+
+        # with ui.row():
+        #   with ui.column().classes("w-1/2"):
+        #       ui.label("Uncalled").classes("text-h5 text-center")
+        #       for key in sorted(admin_checkboxes.keys(), key=lambda k: (k[0], k[1])):
+        #           # Simply calling the widget makes sure it gets rendered in this column.
+        #           admin_checkboxes[key]["left"]
+        #   with ui.column().classes("w-1/2"):
+        #       ui.label("Called").classes("text-h5 text-center")
+        #       for key in sorted(admin_checkboxes.keys(), key=lambda k: (k[0], k[1])):
+        #           admin_checkboxes[key]["right"]
+                    
+
+        ui.timer(1, update_admin_visibility)
+
+ui.run(port=8080, title="Commit Bingo", dark=False)
