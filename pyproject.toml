@@ -6,6 +6,7 @@ authors = ["Offending Commit <offendingcommit@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 package-mode = false
+exclude = [".git", ".git/"]
 
 [tool.poetry.dependencies]
 python = "^3.12"
