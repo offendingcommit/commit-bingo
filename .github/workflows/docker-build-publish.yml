@@ -32,3 +32,4 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ghcr.io/offendingcommit/bingo:latest 
+          build-args: BUILD_ENVIRONMENT=production
