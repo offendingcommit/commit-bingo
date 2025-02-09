@@ -12,6 +12,7 @@ ENV BUILD_ENVIRONMENT=${BUILD_ENVIRONMENT} \
   PIP_NO_CACHE_DIR=off \
   PIP_DISABLE_PIP_VERSION_CHECK=on \
   PIP_DEFAULT_TIMEOUT=100 \
+  PIP_CACHE_DIR=/root/.cache/pip \
   # Poetry's configuration:
   POETRY_NO_INTERACTION=1 \
   POETRY_VIRTUALENVS_CREATE=false \
@@ -35,7 +36,9 @@ WORKDIR /app
 COPY pyproject.toml poetry.lock* /app/
 
 # Configure Poetry to not create a virtual environment and install dependencies
-RUN poetry install $(test "$BUILD_ENVIRONMENT" == production && echo "--only=main")
+RUN --mount=type=cache,target=$POETRY_CACHE_DIR \
+  --mount=type=cache,target=$PIP_CACHE_DIR \
+  poetry install $(test "$BUILD_ENVIRONMENT" == production && echo "--only=main")
 
 # Copy the rest of the project
 COPY . /app
