@@ -135,8 +135,8 @@ def update_admin_visibility():
     """
     for key, chks in admin_checkboxes.items():
         val = chks["left"].value  # both copies hold the same value
-        chks["left"].visible = not val  # show left box only when unchecked
-        chks["right"].visible = val     # show right box only when checked
+        chks["left"].set_visibility(not val)  # show left box only when unchecked
+        chks["right"].set_visibility(val)     # show right box only when checked
         chks["left"].update()
         chks["right"].update()
 
@@ -178,15 +178,20 @@ ui.add_head_html("""<script>
 
 @ui.page("/admin")
 def admin_page():
-    with ui.column().classes("w-full max-w-xl mx-auto p-4") as container:
-        ui.label("Admin Panel (Seed Phrases)").classes("text-h4 text-center")
-        panel = ui.column()  # container for the checkboxes row
-
+    def reset_board():
+        clicked_tiles.clear()
+        # Re-add FREE MEAT at the center (position (2,2))
+        clicked_tiles.add((2, 2))
+        sync_board_state()
+        build_admin_panel()
+    with ui.row().classes("zd max-w-xl mx-auto p-4") as container:
+        ui.label("Admin Panel").classes("text-h4 text-center")
+        ui.button("Reset Board", on_click=reset_board)
         def build_admin_panel():
             panel.clear()  # clear previous panel content
-            with panel:        # add new content as children of panel
+            with panel:
                 with ui.row():
-                    with ui.column().classes("w-1/2"):
+                    with ui.column():
                         ui.label("Uncalled").classes("text-h5 text-center")
                         # Create left (uncalled) checkboxes inside this column.
                         for r in range(5):
@@ -203,7 +208,7 @@ def admin_page():
                                     build_admin_panel()  # re-render admin panel after change
                                 left_chk = ui.checkbox(phrase, value=(key in clicked_tiles), on_change=on_admin_checkbox_change)
                                 admin_checkboxes.setdefault(key, {})["left"] = left_chk
-                    with ui.column().classes("w-1/2"):
+                    with ui.column():
                         ui.label("Called").classes("text-h5 text-center")
                         # Create right (called) checkboxes inside this column.
                         for r in range(5):
@@ -221,6 +226,11 @@ def admin_page():
                                 right_chk = ui.checkbox(phrase, value=(key in clicked_tiles), on_change=on_admin_checkbox_change)
                                 admin_checkboxes.setdefault(key, {})["right"] = right_chk
 
+        panel = ui.row()  # container for the checkboxes row
+
+        
+
+        
         build_admin_panel()
         ui.timer(1, update_admin_visibility)
 
