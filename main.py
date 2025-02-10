@@ -178,42 +178,50 @@ ui.add_head_html("""<script>
 
 @ui.page("/admin")
 def admin_page():
-    with ui.column().classes("w-full max-w-xl mx-auto p-4"):
+    with ui.column().classes("w-full max-w-xl mx-auto p-4") as container:
         ui.label("Admin Panel (Seed Phrases)").classes("text-h4 text-center")
+        panel = ui.column()  # container for the checkboxes row
 
-        # Create checkboxes for each seed phrase if not already created.
-        for r in range(5):
-            for c in range(5):
-                key = (r, c)
-                phrase = board[r][c]
-                if key not in admin_checkboxes:
-                    def on_admin_checkbox_change(e, key=key):
-                        if e.value:
-                            clicked_tiles.add(key)
-                        else:
-                            clicked_tiles.discard(key)
-                        sync_board_state()
-                        update_admin_visibility()
-                    left_chk = ui.checkbox(phrase, value=(key in clicked_tiles), on_change=on_admin_checkbox_change)
-                    right_chk = ui.checkbox(phrase, value=(key in clicked_tiles), on_change=on_admin_checkbox_change)
-                    admin_checkboxes[key] = {"left": left_chk, "right": right_chk}
+        def build_admin_panel():
+            panel.clear()  # clear previous panel content
+            with panel:        # add new content as children of panel
+                with ui.row():
+                    with ui.column().classes("w-1/2"):
+                        ui.label("Uncalled").classes("text-h5 text-center")
+                        # Create left (uncalled) checkboxes inside this column.
+                        for r in range(5):
+                            for c in range(5):
+                                key = (r, c)
+                                phrase = board[r][c]
+                                def on_admin_checkbox_change(e, key=key):
+                                    if e.value:
+                                        clicked_tiles.add(key)
+                                    else:
+                                        clicked_tiles.discard(key)
+                                    sync_board_state()
+                                    update_admin_visibility()
+                                    build_admin_panel()  # re-render admin panel after change
+                                left_chk = ui.checkbox(phrase, value=(key in clicked_tiles), on_change=on_admin_checkbox_change)
+                                admin_checkboxes.setdefault(key, {})["left"] = left_chk
+                    with ui.column().classes("w-1/2"):
+                        ui.label("Called").classes("text-h5 text-center")
+                        # Create right (called) checkboxes inside this column.
+                        for r in range(5):
+                            for c in range(5):
+                                key = (r, c)
+                                phrase = board[r][c]
+                                def on_admin_checkbox_change(e, key=key):
+                                    if e.value:
+                                        clicked_tiles.add(key)
+                                    else:
+                                        clicked_tiles.discard(key)
+                                    sync_board_state()
+                                    update_admin_visibility()
+                                    build_admin_panel()  # re-render admin panel after change
+                                right_chk = ui.checkbox(phrase, value=(key in clicked_tiles), on_change=on_admin_checkbox_change)
+                                admin_checkboxes.setdefault(key, {})["right"] = right_chk
 
-                    
-                    left_chk.on("change", on_admin_checkbox_change)
-                    right_chk.on("change", on_admin_checkbox_change)
-
-        # with ui.row():
-        #   with ui.column().classes("w-1/2"):
-        #       ui.label("Uncalled").classes("text-h5 text-center")
-        #       for key in sorted(admin_checkboxes.keys(), key=lambda k: (k[0], k[1])):
-        #           # Simply calling the widget makes sure it gets rendered in this column.
-        #           admin_checkboxes[key]["left"]
-        #   with ui.column().classes("w-1/2"):
-        #       ui.label("Called").classes("text-h5 text-center")
-        #       for key in sorted(admin_checkboxes.keys(), key=lambda k: (k[0], k[1])):
-        #           admin_checkboxes[key]["right"]
-                    
-
+        build_admin_panel()
         ui.timer(1, update_admin_visibility)
 
 ui.run(port=8080, title="Commit Bingo", dark=False)
