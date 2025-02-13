@@ -359,7 +359,7 @@ def create_board_view(background_color: str, is_global: bool):
         local_tile_buttons = {}
         build_board(container, local_tile_buttons, toggle_tile)
         board_views["stream"] = (container, local_tile_buttons)
-        ui.timer(0.1, lambda: update_tile_styles(local_tile_buttons))
+        ui.timer(0.1, sync_board_state)
 
 @ui.page("/")
 def home_page():
@@ -379,8 +379,8 @@ def setup_head(background_color: str):
                 font-family: 'Super Carnival';
                 font-style: normal;
                 font-weight: 400;
-                /* Load the local .woff file from the static folder */
-                src: url('/static/Super Carnival.woff') format('woff');
+                /* Load the local .woff file from the static folder (URL-encoded for Safari) */
+                src: url('/static/Super%20Carnival.woff') format('woff');
             }
         
     """)
@@ -453,7 +453,7 @@ def get_google_font_css(font_name: str, weight: str, style: str, uniquifier: str
     return f"""
 <style>
 .{uniquifier} {{
-  font-family: "{font_name}", serif;
+  font-family: "{font_name}", sans-serif;
   font-optical-sizing: auto;
   font-weight: {weight};
   font-style: {style};
