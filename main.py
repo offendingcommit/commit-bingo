@@ -27,8 +27,23 @@ HEADER_TEXT_COLOR = "#0CB2B3"             # Color for header text
 
 HEADER_FONT_FAMILY = "'Super Carnival', sans-serif"
 BOARD_TILE_FONT = "Inter"  # Set the desired Google Font for board tiles
-BOARD_TILE_FONT_WEIGHT = "600"  # Default weight for board tiles; adjust as needed.
+BOARD_TILE_FONT_WEIGHT = "700"  # Default weight for board tiles; adjust as needed.
 BOARD_TILE_FONT_STYLE = "normal"  # Default font style for board tiles; for example, "normal" or "italic"
+
+# UI Class Constants
+BOARD_CONTAINER_CLASS = "flex justify-center items-center w-full"
+HEADER_CONTAINER_CLASS = "w-full"
+CARD_CLASSES = "relative p-2 rounded-xl w-full h-full flex items-center justify-center"
+COLUMN_CLASSES = "flex flex-col items-center justify-center gap-0 w-full"
+GRID_CONTAINER_CLASS = "w-full aspect-square p-4"
+GRID_CLASSES = "gap-2 h-full grid-rows-5"
+ROW_CLASSES = "w-full"
+LABEL_SMALL_CLASSES = "fit-text-small text-center select-none"
+LABEL_CLASSES = "fit-text text-center select-none"
+
+# Global dictionary to store board view instances.
+# Keys can be "home" and "stream". Each value is a tuple: (container, tile_buttons).
+board_views = {}
 
 def get_line_style_for_lines(line_count: int, default_text_color: str) -> str:
     """
@@ -157,51 +172,9 @@ def split_phrase_into_lines(phrase: str, forced_lines: int = None) -> list:
          # fallback (should never happen)
          return [" ".join(words)]
 
-# Function to create the Bingo board UI
-def create_bingo_board():
-    # The header and seed label are handled outside this function.
-    logging.info("Creating Bingo board")
-
-    with ui.element("div").classes("flex justify-center items-center w-full"):
-         with ui.element("div").classes("w-full max-w-3xl aspect-square"):
-              with ui.grid(columns=5).classes("gap-2 h-full grid-rows-5"):
-                for row_idx, row in enumerate(board):
-                    for col_idx, phrase in enumerate(row):
-                        # Create a clickable card for this cell with reduced padding and centered content. Added 'relative' class for icon overlay.
-                        card = ui.card().classes("relative p-2 rounded-lg w-full h-full flex items-center justify-center").style("cursor: pointer;")
-                        labels_list = []  # initialize list for storing label metadata
-                        with card:
-                            with ui.column().classes("flex flex-col items-center justify-center gap-0 w-full"):
-                                # Set text color: free meat gets #FF7f33, others black
-                                default_text_color = FREE_SPACE_TEXT_COLOR if phrase.upper() == FREE_SPACE_TEXT else TILE_UNCLICKED_TEXT_COLOR
-                                lines = split_phrase_into_lines(phrase)
-                                line_count = len(lines)
-                                for line in lines:
-                                    with ui.row().classes("w-full"):
-                                        if len(line) <= 3:
-                                            base_class = "fit-text-small text-center select-none"
-                                        else:
-                                            base_class = "fit-text text-center select-none"
-                                        # Create the label with initial inline style using get_line_style_for_lines().
-                                        lbl = ui.label(line).classes(base_class).style(get_line_style_for_lines(line_count, default_text_color))
-                                        # Instead of just storing the label, store its metadata.
-                                        labels_list.append({
-                                            "ref": lbl,
-                                            "base_classes": base_class,
-                                            "base_style": get_line_style_for_lines(line_count, default_text_color)
-                                        })
-                        
-                        tile_buttons[(row_idx, col_idx)] = card
-                        
-                        if phrase.upper() == FREE_SPACE_TEXT:
-                            clicked_tiles.add((row_idx, col_idx))
-                            card.style("color: #FF7f33; border: none;")
-                        else:
-                            card.on("click", lambda e, r=row_idx, c=col_idx: toggle_tile(r, c))
-
 # Toggle tile click state (for example usage)
 def toggle_tile(row, col):
-    # Do not allow toggling for the FREE MEAT cell (center cell)
+    # Do not allow toggling for the FREE SPACE cell (center cell)
     if (row, col) == (2, 2):
         return
     key = (row, col)
@@ -271,12 +244,15 @@ def create_board_view(background_color: str, is_global: bool):
         global home_board_container, tile_buttons
         home_board_container = container
         tile_buttons = {}  # Start with an empty dictionary.
-        build_board(home_board_container, tile_buttons, toggle_tile)
+        build_board(container, tile_buttons, toggle_tile)
+        board_views["home"] = (container, tile_buttons)
         # Add timers for synchronizing the global board.
         ui.timer(0.1, sync_board_state)
         ui.timer(1, check_phrases_file_change)
     else:
-        local_tile_buttons = build_board(container, {}, toggle_tile)
+        local_tile_buttons = {}
+        build_board(container, local_tile_buttons, toggle_tile)
+        board_views["stream"] = (container, local_tile_buttons)
         ui.timer(0.1, lambda: update_tile_styles(local_tile_buttons))
     # Display the seed beneath the board.
     with ui.element("div").classes("w-full mt-4"):
@@ -294,7 +270,7 @@ def stream_page():
 def admin_page():
     def reset_board():
         clicked_tiles.clear()
-        # Re-add FREE MEAT at the center (position (2,2))
+        # Re-add FREE SPACE at the center (position (2,2))
         clicked_tiles.add((2, 2))
         sync_board_state()
         build_admin_panel()  # rebuild panel to reflect state changes
@@ -333,9 +309,17 @@ def setup_head(background_color: str):
     Set up common head elements: fonts, fitty JS, and background color.
     """
     ui.add_head_html(f'<link href="https://fonts.cdnfonts.com/css/super-carnival" rel="stylesheet">')
-    ui.add_head_html(f'<link href="https://fonts.googleapis.com/css2?family={BOARD_TILE_FONT.replace(" ", "+")}&display=swap" rel="stylesheet">')
+    ui.add_head_html("""
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family={BOARD_TILE_FONT.replace(" ", "+")}:opsz@10..1000&display=swap" rel="stylesheet">
+    """)
+    # Add CSS class for board tile fonts; you can later reference this class in your CSS.
+    ui.add_head_html(get_google_font_css(BOARD_TILE_FONT, BOARD_TILE_FONT_WEIGHT, BOARD_TILE_FONT_STYLE, "board_tile"))
+
     ui.add_head_html('<script src="https://cdn.jsdelivr.net/npm/fitty@2.3.6/dist/fitty.min.js"></script>')
     ui.add_head_html(f'<style>body {{ background-color: {background_color}; }}</style>')
+
     ui.add_head_html("""<script>
         document.addEventListener('DOMContentLoaded', () => {
             fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
@@ -353,42 +337,48 @@ def setup_head(background_color: str):
     with ui.element("div").classes("w-full"):
         ui.label("COMMIT !BINGO").classes("fit-header text-center").style(f"font-family: {HEADER_FONT_FAMILY}; color: {HEADER_TEXT_COLOR};")
 
+def get_google_font_css(font_name: str, weight: str, style: str, uniquifier: str) -> str:
+    """
+    Returns a CSS style block defining a class for the specified Google font.
+    'uniquifier' is used as the CSS class name.
+    """
+    return f"""
+<style>
+.{uniquifier} {{
+  font-family: "{font_name}", serif;
+  font-optical-sizing: auto;
+  font-weight: {weight};
+  font-style: {style};
+}}
+</style>
+"""
+
 def build_board(parent, tile_buttons_dict: dict, on_tile_click):
     """
     Build the common Bingo board in the given parent element.
     The resulting tile UI elements are added to tile_buttons_dict.
     """
     with parent:
-        # Use full width and add padding so the board touches the edges with a gap
-        with ui.element("div").classes("w-full aspect-square p-4"):
-            with ui.grid(columns=5).classes("gap-2 h-full grid-rows-5"):
+        with ui.element("div").classes(GRID_CONTAINER_CLASS):
+            with ui.grid(columns=5).classes(GRID_CLASSES):
                 for row_idx, row in enumerate(board):
                     for col_idx, phrase in enumerate(row):
-                        card = ui.card().classes(
-                            "relative p-2 rounded-lg w-full h-full flex items-center justify-center"
-                        ).style("cursor: pointer;")
+                        card = ui.card().classes(CARD_CLASSES).style("cursor: pointer;")
                         labels_list = []  # initialize list for storing label metadata
                         with card:
                             with ui.column().classes("flex flex-col items-center justify-center gap-0 w-full"):
-                                # Set text color: FREE MEAT uses FREE_MEAT_TEXT_COLOR, others use TILE_UNCLICKED_TEXT_COLOR
                                 default_text_color = FREE_SPACE_TEXT_COLOR if phrase.upper() == FREE_SPACE_TEXT else TILE_UNCLICKED_TEXT_COLOR
                                 lines = split_phrase_into_lines(phrase)
                                 line_count = len(lines)
                                 for line in lines:
                                     with ui.row().classes("w-full"):
-                                        if len(line) <= 3:
-                                            base_class = "fit-text-small text-center select-none"
-                                        else:
-                                            base_class = "fit-text text-center select-none"
-                                        # Create the label with initial inline style using get_line_style_for_lines().
+                                        base_class = LABEL_SMALL_CLASSES if len(line) <= 3 else LABEL_CLASSES
                                         lbl = ui.label(line).classes(base_class).style(get_line_style_for_lines(line_count, default_text_color))
-                                        # Instead of just storing the label, store its metadata.
                                         labels_list.append({
                                             "ref": lbl,
                                             "base_classes": base_class,
                                             "base_style": get_line_style_for_lines(line_count, default_text_color)
                                         })
-                        # Store both the card and its labels in the global tile_buttons dict.
                         tile_buttons_dict[(row_idx, col_idx)] = {"card": card, "labels": labels_list}
                         if phrase.upper() == FREE_SPACE_TEXT:
                             clicked_tiles.add((row_idx, col_idx))
@@ -404,8 +394,6 @@ def update_tile_styles(tile_buttons_dict: dict):
     for (r, c), tile in tile_buttons_dict.items():
         # tile is a dict with keys "card" and "labels"
         phrase = board[r][c]
-        if phrase.upper() == FREE_SPACE_TEXT:
-            continue
 
         if (r, c) in clicked_tiles:
             new_card_style = f"background-color: {TILE_CLICKED_BG_COLOR}; color: {TILE_CLICKED_TEXT_COLOR}; border: none;"
@@ -442,7 +430,7 @@ def check_phrases_file_change():
     Check if phrases.txt has changed. If so, re-read the file, update the board,
     and re-render the board UI.
     """
-    global last_phrases_mtime, phrases, board, tile_buttons, home_board_container
+    global last_phrases_mtime, phrases, board, board_views
     try:
         mtime = os.path.getmtime("phrases.txt")
     except Exception as e:
@@ -456,13 +444,14 @@ def check_phrases_file_change():
             phrases = [line.strip().upper() for line in f if line.strip()]
         # Rebuild board data: re-shuffle and re-create board structure.
         shuffled_phrases = random.sample(phrases, 24)
-        shuffled_phrases.insert(12, "FREE MEAT")
+        shuffled_phrases.insert(12, FREE_SPACE_TEXT)
         board = [shuffled_phrases[i:i+5] for i in range(0, 25, 5)]
-        # Clear the board UI and rebuild it.
-        home_board_container.clear()
-        tile_buttons.clear()  # Clear global dictionary.
-        build_board(home_board_container, tile_buttons, toggle_tile)
-        home_board_container.update()  # Force update so new styles are applied immediately.
+        # Update all board views (both home and stream)
+        for view, (container, tile_buttons_local) in board_views.items():
+            container.clear()
+            tile_buttons_local.clear()  # Clear local board dictionary.
+            build_board(container, tile_buttons_local, toggle_tile)
+            container.update()  # Force update so new styles are applied immediately.
         ui.run_javascript(
             "fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });"
             "fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });"
