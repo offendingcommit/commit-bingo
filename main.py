@@ -15,10 +15,10 @@ FREE_SPACE_TEXT = "FREE MEAT"
 FREE_SPACE_TEXT_COLOR = "#FF7f33"
 
 # --- New: Color constants and font ---
-TILE_CLICKED_BG_COLOR = "#3b82f6"        # Blue background for clicked tiles
-TILE_CLICKED_TEXT_COLOR = "white"
-TILE_UNCLICKED_BG_COLOR = "#facc15"       # Yellow background for unclicked tiles
-TILE_UNCLICKED_TEXT_COLOR = "black"
+TILE_CLICKED_BG_COLOR = "#100079"
+TILE_CLICKED_TEXT_COLOR = "#1BEFF5"
+TILE_UNCLICKED_BG_COLOR = "#1BEFF5"
+TILE_UNCLICKED_TEXT_COLOR = "#100079"
 
 
 HOME_BG_COLOR = "#100079"                 # Background for home page
@@ -63,7 +63,34 @@ def get_line_style_for_lines(line_count: int, default_text_color: str) -> str:
 
 # Read phrases from a text file and convert them to uppercase.
 with open("phrases.txt", "r") as f:
-    phrases = [line.strip().upper() for line in f if line.strip()]
+    raw_phrases = [line.strip().upper() for line in f if line.strip()]
+
+# Remove duplicates while preserving order.
+unique_phrases = []
+seen = set()
+for p in raw_phrases:
+    if p not in seen:
+        seen.add(p)
+        unique_phrases.append(p)
+
+# Optional: filter out phrases with too many repeated words.
+def has_too_many_repeats(phrase, threshold=0.5):
+    """
+    Returns True if too many of the words in the phrase repeat.
+    For example, if the ratio of unique words to total words is less than the threshold.
+    Logs a debug message if the phrase is discarded.
+    """
+    words = phrase.split()
+    if not words:
+        return False
+    unique_count = len(set(words))
+    ratio = unique_count / len(words)
+    if ratio < threshold:
+        logging.debug(f"Discarding phrase '{phrase}' due to repeats: {unique_count}/{len(words)} = {ratio:.2f} < {threshold}")
+        return True
+    return False
+
+phrases = [p for p in unique_phrases if not has_too_many_repeats(p)]
 
 # Use today's date as the seed for deterministic shuffling
 today_seed = datetime.date.today().strftime("%Y%m%d")
@@ -256,7 +283,7 @@ def create_board_view(background_color: str, is_global: bool):
         ui.timer(0.1, lambda: update_tile_styles(local_tile_buttons))
     # Display the seed beneath the board.
     with ui.element("div").classes("w-full mt-4"):
-        ui.label(f"Seed: {today_seed}").classes("text-md text-gray-300 text-center")
+        ui.label(f"Seed: {today_seed}").classes("text-md text-center").style(f"color: {TILE_UNCLICKED_BG_COLOR};")
 
 @ui.page("/")
 def home_page():
@@ -441,7 +468,34 @@ def check_phrases_file_change():
         last_phrases_mtime = mtime
         # Re-read phrases.txt
         with open("phrases.txt", "r") as f:
-            phrases = [line.strip().upper() for line in f if line.strip()]
+            raw_phrases = [line.strip().upper() for line in f if line.strip()]
+
+        # Remove duplicates while preserving order.
+        unique_phrases = []
+        seen = set()
+        for p in raw_phrases:
+            if p not in seen:
+                seen.add(p)
+                unique_phrases.append(p)
+
+        # Optional: filter out phrases with too many repeated words.
+        def has_too_many_repeats(phrase, threshold=0.5):
+            """
+            Returns True if too many of the words in the phrase repeat.
+            For example, if the ratio of unique words to total words is less than the threshold.
+            Logs a debug message if the phrase is discarded.
+            """
+            words = phrase.split()
+            if not words:
+                return False
+            unique_count = len(set(words))
+            ratio = unique_count / len(words)
+            if ratio < threshold:
+                logging.debug(f"Discarding phrase '{phrase}' due to repeats: {unique_count}/{len(words)} = {ratio:.2f} < {threshold}")
+                return True
+            return False
+
+        phrases = [p for p in unique_phrases if not has_too_many_repeats(p)]
         # Rebuild board data: re-shuffle and re-create board structure.
         shuffled_phrases = random.sample(phrases, 24)
         shuffled_phrases.insert(12, FREE_SPACE_TEXT)
