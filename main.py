@@ -45,6 +45,26 @@ LABEL_CLASSES = "fit-text text-center select-none"
 # Keys can be "home" and "stream". Each value is a tuple: (container, tile_buttons).
 board_views = {}
 
+board_iteration = 1
+
+def generate_board(seed_val: int):
+    """
+    Generate a new board using the provided seed value.
+    Also resets the clicked_tiles (ensuring the FREE SPACE is clicked) and sets the global today_seed.
+    """
+    global board, today_seed, clicked_tiles
+    todays_seed = datetime.date.today().strftime("%Y%m%d")
+    random.seed(seed_val)
+    shuffled_phrases = random.sample(phrases, 24)
+    shuffled_phrases.insert(12, FREE_SPACE_TEXT)
+    board = [shuffled_phrases[i:i+5] for i in range(0, 25, 5)]
+    clicked_tiles.clear()
+    for r, row in enumerate(board):
+        for c, phrase in enumerate(row):
+            if phrase.upper() == FREE_SPACE_TEXT:
+                clicked_tiles.add((r, c))
+    today_seed = f"{todays_seed}.{seed_val}"
+
 def get_line_style_for_lines(line_count: int, default_text_color: str) -> str:
     """
     Return a complete style string with an adjusted line-height based on the number of lines
@@ -92,20 +112,13 @@ def has_too_many_repeats(phrase, threshold=0.5):
 
 phrases = [p for p in unique_phrases if not has_too_many_repeats(p)]
 
-# Use today's date as the seed for deterministic shuffling
-today_seed = datetime.date.today().strftime("%Y%m%d")
-random.seed(int(today_seed))  # Everyone gets the same shuffle per day
-
-# Shuffle and create the 5x5 board:
-shuffled_phrases = random.sample(phrases, 24)  # Random but fixed order per day
-shuffled_phrases.insert(12, FREE_SPACE_TEXT)         # Center slot
-board = [shuffled_phrases[i:i+5] for i in range(0, 25, 5)]
-
 # Track clicked tiles and store chip references
 clicked_tiles = set()
 tile_buttons = {}  # {(row, col): chip}
 tile_icons = {}  # {(row, col): icon reference}
-admin_checkboxes = {}  # {(row, col): admin checkbox element}
+
+# Initialize the board using the default iteration value.
+generate_board(board_iteration)
 
 def split_phrase_into_lines(phrase: str, forced_lines: int = None) -> list:
     """
@@ -225,38 +238,9 @@ def check_winner():
         ui.notify("BINGO!", color="green", duration=5)
 
 def sync_board_state():
-    update_tile_styles(tile_buttons)
-    sync_admin_checkboxes()
-    update_admin_visibility()
-
-def sync_admin_checkboxes():
-    """
-    Sync the value in each admin panel checkbox with the global clicked_tiles.
-    """
-    for key, chks in admin_checkboxes.items():
-        new_value = key in clicked_tiles
-        if "single" in chks and chks["single"].value != new_value:
-            chks["single"].value = new_value
-            chks["single"].update()
-
-def update_admin_visibility():
-    """
-    Bind the visibility of the admin checkboxes:
-       - left copy is visible only when unchecked (value False)
-       - right copy is visible only when checked (value True)
-    """
-    for key, chks in admin_checkboxes.items():
-        val = chks["single"].value  # both copies hold the same value
-        chks["single"].set_visibility(not val)  # show left box only when unchecked
-        chks["single"].update()
-
-def admin_checkbox_change(e, key):
-    # When a checkbox in the admin page is toggled, update the global clicked_tiles
-    if e.value:
-        clicked_tiles.add(key)
-    else:
-        clicked_tiles.discard(key)
-    sync_board_state()
+    # Update tile styles in every board view (e.g., home and stream)
+    for view_key, (container, tile_buttons_local) in board_views.items():
+        update_tile_styles(tile_buttons_local)
 
 def create_board_view(background_color: str, is_global: bool):
     """
@@ -265,10 +249,16 @@ def create_board_view(background_color: str, is_global: bool):
     otherwise it uses a local board (stream page).
     """
     setup_head(background_color)
-    # Create the board container.
-    container = ui.element("div").classes("flex justify-center items-center w-full")
+    # Create the board container. For the home view, assign an ID to capture it.
     if is_global:
-        global home_board_container, tile_buttons
+         container = ui.element("div").classes("home-board-container flex justify-center items-center w-full")
+         ui.run_javascript("document.querySelector('.home-board-container').id = 'board-container'")
+    else:
+         container = ui.element("div").classes("stream-board-container flex justify-center items-center w-full")
+         ui.run_javascript("document.querySelector('.stream-board-container').id = 'board-container-stream'")
+     
+    if is_global:
+        global home_board_container, tile_buttons, seed_label
         home_board_container = container
         tile_buttons = {}  # Start with an empty dictionary.
         build_board(container, tile_buttons, toggle_tile)
@@ -276,14 +266,20 @@ def create_board_view(background_color: str, is_global: bool):
         # Add timers for synchronizing the global board.
         ui.timer(0.1, sync_board_state)
         ui.timer(1, check_phrases_file_change)
+        global seed_label
+        with ui.row().classes("w-full mt-4 items-center justify-center gap-4"):
+             with ui.button("", icon="refresh", on_click=reset_board).classes("rounded-full w-12 h-12") as reset_btn:
+                 ui.tooltip("Reset Board")
+             with ui.button("", icon="autorenew", on_click=generate_new_board).classes("rounded-full w-12 h-12") as new_board_btn:
+                 ui.tooltip("New Board")
+             seed_label = ui.label(f"Seed: {today_seed}").classes("text-sm text-center").style(
+                 f"font-family: '{BOARD_TILE_FONT}', sans-serif; color: {TILE_UNCLICKED_BG_COLOR};"
+             )
     else:
         local_tile_buttons = {}
         build_board(container, local_tile_buttons, toggle_tile)
         board_views["stream"] = (container, local_tile_buttons)
         ui.timer(0.1, lambda: update_tile_styles(local_tile_buttons))
-    # Display the seed beneath the board.
-    with ui.element("div").classes("w-full mt-4"):
-        ui.label(f"Seed: {today_seed}").classes("text-md text-center").style(f"color: {TILE_UNCLICKED_BG_COLOR};")
 
 @ui.page("/")
 def home_page():
@@ -292,44 +288,6 @@ def home_page():
 @ui.page("/stream")
 def stream_page():
     create_board_view(STREAM_BG_COLOR, False)
-
-@ui.page("/admin")
-def admin_page():
-    def reset_board():
-        clicked_tiles.clear()
-        # Re-add FREE SPACE at the center (position (2,2))
-        clicked_tiles.add((2, 2))
-        sync_board_state()
-        build_admin_panel()  # rebuild panel to reflect state changes
-
-    with ui.row().classes("zd max-w-xl mx-auto p-4") as container:
-        ui.label("Admin Panel").classes("text-h4 text-center")
-        ui.button("Reset Board", on_click=reset_board)
-
-        def build_admin_panel():
-            panel.clear()  # clear previous panel content
-            with panel:
-                with ui.column():
-                    # Single column design: list each tile with a toggle checkbox.
-                    for r in range(5):
-                        for c in range(5):
-                            key = (r, c)
-                            phrase = board[r][c]
-                            with ui.row().classes("items-center"):
-                                ui.label(f"{phrase} ({r},{c})").classes("w-3/4")
-                                def on_checkbox_change(e, key=key):
-                                    if e.value:
-                                        clicked_tiles.add(key)
-                                    else:
-                                        clicked_tiles.discard(key)
-                                    sync_board_state()
-                                cb = ui.checkbox("", value=(key in clicked_tiles), on_change=on_checkbox_change)
-                                # Save a single reference to this admin checkbox
-                                admin_checkboxes[key] = {"single": cb}
-
-        panel = ui.column()  # container for the admin panel
-        build_admin_panel()
-        ui.timer(0.1, sync_admin_checkboxes)
 
 def setup_head(background_color: str):
     """
@@ -345,6 +303,38 @@ def setup_head(background_color: str):
     ui.add_head_html(get_google_font_css(BOARD_TILE_FONT, BOARD_TILE_FONT_WEIGHT, BOARD_TILE_FONT_STYLE, "board_tile"))
 
     ui.add_head_html('<script src="https://cdn.jsdelivr.net/npm/fitty@2.3.6/dist/fitty.min.js"></script>')
+    # Add html2canvas library and capture function.
+    ui.add_head_html("""
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+    function captureBoardAndDownload(seed) {
+        var boardElem = document.getElementById('board-container');
+        if (!boardElem) {
+            alert("Board container not found!");
+            return;
+        }
+        // Run fitty to ensure text is resized and centered
+        fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+        fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+
+        // Wait a short period to ensure that the board is fully rendered and styles have settled.
+        setTimeout(function() {
+            html2canvas(boardElem, {
+                useCORS: true,
+                scale: 10,  // Increase scale for higher resolution
+                logging: true,
+                backgroundColor: null
+            }).then(function(canvas) {
+                var link = document.createElement('a');
+                link.download = `bingo_board_${seed}.png`;  // Include seed in filename
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }, 500);  // Adjust delay if necessary
+    }
+    </script>
+    """)
+
     ui.add_head_html(f'<style>body {{ background-color: {background_color}; }}</style>')
 
     ui.add_head_html("""<script>
@@ -423,7 +413,7 @@ def update_tile_styles(tile_buttons_dict: dict):
         phrase = board[r][c]
 
         if (r, c) in clicked_tiles:
-            new_card_style = f"background-color: {TILE_CLICKED_BG_COLOR}; color: {TILE_CLICKED_TEXT_COLOR}; border: none;"
+            new_card_style = f"background-color: {TILE_CLICKED_BG_COLOR}; color: {TILE_CLICKED_TEXT_COLOR}; border: 8px solid {TILE_UNCLICKED_BG_COLOR};"
             new_label_color = TILE_CLICKED_TEXT_COLOR
         else:
             new_card_style = f"background-color: {TILE_UNCLICKED_BG_COLOR}; color: {TILE_UNCLICKED_TEXT_COLOR}; border: none;"
@@ -497,9 +487,7 @@ def check_phrases_file_change():
 
         phrases = [p for p in unique_phrases if not has_too_many_repeats(p)]
         # Rebuild board data: re-shuffle and re-create board structure.
-        shuffled_phrases = random.sample(phrases, 24)
-        shuffled_phrases.insert(12, FREE_SPACE_TEXT)
-        board = [shuffled_phrases[i:i+5] for i in range(0, 25, 5)]
+        generate_board(board_iteration)
         # Update all board views (both home and stream)
         for view, (container, tile_buttons_local) in board_views.items():
             container.clear()
@@ -510,6 +498,36 @@ def check_phrases_file_change():
             "fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });"
             "fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });"
         )
+
+def reset_board():
+    """
+    Reset the board by clearing all clicked states and re-adding the FREE SPACE.
+    """
+    clicked_tiles.clear()
+    for r, row in enumerate(board):
+        for c, phrase in enumerate(row):
+            if phrase.upper() == FREE_SPACE_TEXT:
+                clicked_tiles.add((r, c))
+    sync_board_state()
+
+def generate_new_board():
+    """
+    Generate a new board with an incremented iteration seed and update all board views.
+    """
+    global board_iteration
+    board_iteration += 1
+    generate_board(board_iteration)
+    # Update all board views (both home and stream)
+    for view_key, (container, tile_buttons_local) in board_views.items():
+         container.clear()
+         tile_buttons_local.clear()
+         build_board(container, tile_buttons_local, toggle_tile)
+         container.update()
+    # Update the seed label if available
+    if 'seed_label' in globals():
+         seed_label.set_text(f"Seed: {today_seed}")
+         seed_label.update()
+    reset_board()
 
 # Run the NiceGUI app
 ui.run(port=8080, title="Commit Bingo", dark=False)
