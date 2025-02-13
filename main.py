@@ -344,7 +344,6 @@ def create_board_view(background_color: str, is_global: bool):
         build_board(container, tile_buttons, toggle_tile)
         board_views["home"] = (container, tile_buttons)
         # Add timers for synchronizing the global board.
-        ui.timer(0.1, sync_board_state)
         ui.timer(1, check_phrases_file_change)
         global seed_label
         with ui.row().classes("w-full mt-4 items-center justify-center gap-4"):
@@ -359,15 +358,16 @@ def create_board_view(background_color: str, is_global: bool):
         local_tile_buttons = {}
         build_board(container, local_tile_buttons, toggle_tile)
         board_views["stream"] = (container, local_tile_buttons)
-        ui.timer(0.1, sync_board_state)
 
 @ui.page("/")
 def home_page():
     create_board_view(HOME_BG_COLOR, True)
+    ui.timer(0.1, sync_board_state)
 
 @ui.page("/stream")
 def stream_page():
     create_board_view(STREAM_BG_COLOR, False)
+    ui.timer(0.1, sync_board_state)
 
 def setup_head(background_color: str):
     """
@@ -479,7 +479,7 @@ def build_board(parent, tile_buttons_dict: dict, on_tile_click):
                                 lines = split_phrase_into_lines(phrase)
                                 line_count = len(lines)
                                 for line in lines:
-                                    with ui.row().classes("w-full"):
+                                    with ui.row().classes("w-full items-center justify-center"):
                                         base_class = LABEL_SMALL_CLASSES if len(line) <= 3 else LABEL_CLASSES
                                         lbl = ui.label(line).classes(base_class).style(get_line_style_for_lines(line_count, default_text_color))
                                         labels_list.append({
