@@ -3,9 +3,13 @@ import random
 import datetime
 import logging
 import asyncio
+import os
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Global variable to track phrases.txt modification time.
+last_phrases_mtime = os.path.getmtime("phrases.txt")
 
 # --- New: Color constants and font ---
 TILE_CLICKED_BG_COLOR = "#3b82f6"        # Blue background for clicked tiles
@@ -35,9 +39,9 @@ def get_line_style_for_lines(line_count: int, default_text_color: str) -> str:
     elif line_count == 2:
         lh = "1.2em"  # Slightly reduced spacing for two lines.
     elif line_count == 3:
-        lh = "0.9em"    # Even tighter spacing for three lines.
+        lh = "0.75em"    # Even tighter spacing for three lines.
     else:
-        lh = "0.9em"  # For four or more lines.
+        lh = "0.7em"  # For four or more lines.
     return f"font-family: {FONT_FAMILY}; padding: 0; margin: 0; color: {default_text_color}; line-height: {lh};"
 
 # Read phrases from a text file and convert them to uppercase.
@@ -59,22 +63,97 @@ tile_buttons = {}  # {(row, col): chip}
 tile_icons = {}  # {(row, col): icon reference}
 admin_checkboxes = {}  # {(row, col): admin checkbox element}
 
-def split_phrase_into_lines(phrase: str) -> list:
+def split_phrase_into_lines(phrase: str, forced_lines: int = None) -> list:
     """
     Splits the phrase into balanced lines.
-    If the phrase has two or fewer words, return it as a single line.
-    Otherwise, split into two lines at the midpoint.
+    For phrases of up to 3 words, return one word per line.
+    For longer phrases, try splitting the phrase into 2, 3, or 4 lines so that the total
+    number of characters (including spaces) in each line is as similar as possible.
+    The function will never return more than 4 lines.
+    If 'forced_lines' is provided (2, 3, or 4), then the candidate with that many lines is chosen
+    if available; otherwise, the best candidate overall is returned.
     """
     words = phrase.split()
-    if len(words) == 1:
-        return [words[0]]
-    elif len(words) == 2:
-        return [words[0], words[1]]
-    elif len(words) == 3:
-        return [words[0], words[1], words[2]]
+    n = len(words)
+    if n <= 3:
+        return words
+
+    # Helper: total length of a list of words (including spaces between words).
+    def segment_length(segment):
+        return sum(len(word) for word in segment) + (len(segment) - 1 if segment else 0)
+
+    candidates = []  # list of tuples: (number_of_lines, diff, candidate)
+
+    # 2-line candidate
+    best_diff_2 = float('inf')
+    best_seg_2 = None
+    for i in range(1, n):
+         seg1 = words[:i]
+         seg2 = words[i:]
+         len1 = segment_length(seg1)
+         len2 = segment_length(seg2)
+         diff = abs(len1 - len2)
+         if diff < best_diff_2:
+              best_diff_2 = diff
+              best_seg_2 = [" ".join(seg1), " ".join(seg2)]
+    if best_seg_2 is not None:
+         candidates.append((2, best_diff_2, best_seg_2))
+              
+    # 3-line candidate (if at least 4 words)
+    if n >= 4:
+         best_diff_3 = float('inf')
+         best_seg_3 = None
+         for i in range(1, n-1):
+             for j in range(i+1, n):
+                 seg1 = words[:i]
+                 seg2 = words[i:j]
+                 seg3 = words[j:]
+                 len1 = segment_length(seg1)
+                 len2 = segment_length(seg2)
+                 len3 = segment_length(seg3)
+                 current_diff = max(len1, len2, len3) - min(len1, len2, len3)
+                 if current_diff < best_diff_3:
+                     best_diff_3 = current_diff
+                     best_seg_3 = [" ".join(seg1), " ".join(seg2), " ".join(seg3)]
+         if best_seg_3 is not None:
+             candidates.append((3, best_diff_3, best_seg_3))
+
+    # 4-line candidate (if at least 5 words)
+    if n >= 5:
+         best_diff_4 = float('inf')
+         best_seg_4 = None
+         for i in range(1, n-2):
+             for j in range(i+1, n-1):
+                 for k in range(j+1, n):
+                     seg1 = words[:i]
+                     seg2 = words[i:j]
+                     seg3 = words[j:k]
+                     seg4 = words[k:]
+                     len1 = segment_length(seg1)
+                     len2 = segment_length(seg2)
+                     len3 = segment_length(seg3)
+                     len4 = segment_length(seg4)
+                     diff = max(len1, len2, len3, len4) - min(len1, len2, len3, len4)
+                     if diff < best_diff_4:
+                         best_diff_4 = diff
+                         best_seg_4 = [" ".join(seg1), " ".join(seg2), " ".join(seg3), " ".join(seg4)]
+         if best_seg_4 is not None:
+             candidates.append((4, best_diff_4, best_seg_4))
+
+    # If a forced number of lines is specified, try to return that candidate first.
+    if forced_lines is not None:
+         forced_candidates = [cand for cand in candidates if cand[0] == forced_lines]
+         if forced_candidates:
+              _, _, best_candidate = min(forced_candidates, key=lambda x: x[1])
+              return best_candidate
+
+    # Otherwise, choose the candidate with the smallest diff.
+    if candidates:
+         _, best_diff, best_candidate = min(candidates, key=lambda x: x[1])
+         return best_candidate
     else:
-        mid = round(len(words) / 2)
-        return [" ".join(words[:mid]), " ".join(words[mid:])]
+         # fallback (should never happen)
+         return [" ".join(words)]
 
 # Function to create the Bingo board UI
 def create_bingo_board():
@@ -96,7 +175,10 @@ def create_bingo_board():
                                 line_count = len(lines)
                                 for line in lines:
                                     with ui.row().classes("w-full"):
-                                        ui.label(line).classes("fit-text text-center select-none").style(get_line_style_for_lines(line_count, default_text_color))
+                                        if len(line) <= 3:
+                                            ui.label(line).classes("fit-text-small text-center select-none").style(get_line_style_for_lines(line_count, default_text_color))
+                                        else:
+                                            ui.label(line).classes("fit-text text-center select-none").style(get_line_style_for_lines(line_count, default_text_color))
                         
                         tile_buttons[(row_idx, col_idx)] = card
                         
@@ -169,11 +251,16 @@ def home_page():
     # Set up NiceGUI page and head elements    
     setup_head(HOME_BG_COLOR)
 
-    global tile_buttons
-    tile_buttons = build_board(ui.element("div").classes("flex justify-center items-center w-full"), tile_buttons, toggle_tile)
+    global home_board_container, tile_buttons
+    home_board_container = ui.element("div").classes("flex justify-center items-center w-full")
+    tile_buttons = {}  # Start with an empty dictionary.
+    build_board(home_board_container, tile_buttons, toggle_tile)
 
-    # Add a timer that calls sync_board_state every 1 second to push state updates to all clients
+    # Add a timer that calls sync_board_state every 0.1 second to push state updates to all clients
     ui.timer(0.1, sync_board_state)
+
+    # Add a timer to check if phrases.txt has changed
+    ui.timer(1, check_phrases_file_change)
 
     with ui.element("div").classes("w-full mt-4"):
         ui.label(f"Seed: {today_seed}").classes("text-md text-gray-300 text-center")
@@ -242,10 +329,12 @@ def setup_head(background_color: str):
     ui.add_head_html("""<script>
         document.addEventListener('DOMContentLoaded', () => {
             fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+            fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
             fitty('.fit-header', { multiLine: true, minSize: 10, maxSize: 2000 });
         });
         window.addEventListener('resize', () => {
             fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+            fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
             fitty('.fit-header', { multiLine: true, minSize: 10, maxSize: 2000 });
         });
     </script>""")
@@ -275,7 +364,10 @@ def build_board(parent, tile_buttons_dict: dict, on_tile_click):
                                 line_count = len(lines)
                                 for line in lines:
                                     with ui.row().classes("w-full"):
-                                        ui.label(line).classes("fit-text text-center select-none").style(get_line_style_for_lines(line_count, default_text_color))
+                                        if len(line) <= 3:
+                                            ui.label(line).classes("fit-text-small text-center select-none").style(get_line_style_for_lines(line_count, default_text_color))
+                                        else:
+                                            ui.label(line).classes("fit-text text-center select-none").style(get_line_style_for_lines(line_count, default_text_color))
                         tile_buttons_dict[(row_idx, col_idx)] = card
                         if phrase.upper() == "FREE MEAT":
                             clicked_tiles.add((row_idx, col_idx))
@@ -297,6 +389,33 @@ def update_tile_styles(tile_buttons_dict: dict):
             new_style = f"background-color: {TILE_UNCLICKED_BG_COLOR}; color: {TILE_UNCLICKED_TEXT_COLOR}; border: none;"
         card.style(new_style)
         card.update()
+
+def check_phrases_file_change():
+    """
+    Check if phrases.txt has changed. If so, re-read the file, update the board,
+    and re-render the board UI.
+    """
+    global last_phrases_mtime, phrases, board, tile_buttons, home_board_container
+    try:
+        mtime = os.path.getmtime("phrases.txt")
+    except Exception as e:
+        logging.error(f"Error checking phrases.txt: {e}")
+        return
+    if mtime != last_phrases_mtime:
+        logging.info("phrases.txt changed, reloading board.")
+        last_phrases_mtime = mtime
+        # Re-read phrases.txt
+        with open("phrases.txt", "r") as f:
+            phrases = [line.strip().upper() for line in f if line.strip()]
+        # Rebuild board data: re-shuffle and re-create board structure.
+        shuffled_phrases = random.sample(phrases, 24)
+        shuffled_phrases.insert(12, "FREE MEAT")
+        board = [shuffled_phrases[i:i+5] for i in range(0, 25, 5)]
+        # Clear the board UI and rebuild it.
+        home_board_container.clear()
+        tile_buttons.clear()  # Clear global dictionary.
+        build_board(home_board_container, tile_buttons, toggle_tile)
+        home_board_container.update()  # Force update so new styles are applied immediately.
 
 # Run the NiceGUI app
 ui.run(port=8080, title="Commit Bingo", dark=False)
