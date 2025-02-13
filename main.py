@@ -35,7 +35,7 @@ BOARD_TILE_FONT_STYLE = "normal"  # Default font style for board tiles; for exam
 # UI Class Constants
 BOARD_CONTAINER_CLASS = "flex justify-center items-center w-full"
 HEADER_CONTAINER_CLASS = "w-full"
-CARD_CLASSES = "relative p-2 rounded-xl w-full h-full flex items-center justify-center"
+CARD_CLASSES = "relative p-2 rounded-xl shadow-8 w-full h-full flex items-center justify-center"
 COLUMN_CLASSES = "flex flex-col items-center justify-center gap-0 w-full"
 GRID_CONTAINER_CLASS = "w-full aspect-square p-4"
 GRID_CLASSES = "gap-2 h-full grid-rows-5"
@@ -490,7 +490,8 @@ def build_board(parent, tile_buttons_dict: dict, on_tile_click):
                         tile_buttons_dict[(row_idx, col_idx)] = {"card": card, "labels": labels_list}
                         if phrase.upper() == FREE_SPACE_TEXT:
                             clicked_tiles.add((row_idx, col_idx))
-                            card.style(f"color: {FREE_SPACE_TEXT_COLOR}; border: none;")
+                            card.style(f"color: {FREE_SPACE_TEXT_COLOR}; border: none; outline: 3px solid {TILE_CLICKED_TEXT_COLOR};")
+                            
                         else:
                             card.on("click", lambda e, r=row_idx, c=col_idx: on_tile_click(r, c))
     return tile_buttons_dict
@@ -504,7 +505,7 @@ def update_tile_styles(tile_buttons_dict: dict):
         phrase = board[r][c]
 
         if (r, c) in clicked_tiles:
-            new_card_style = f"background-color: {TILE_CLICKED_BG_COLOR}; color: {TILE_CLICKED_TEXT_COLOR}; border: none;"
+            new_card_style = f"background-color: {TILE_CLICKED_BG_COLOR}; color: {TILE_CLICKED_TEXT_COLOR}; border: none; outline: 3px solid {TILE_CLICKED_TEXT_COLOR};"
             new_label_color = TILE_CLICKED_TEXT_COLOR
         else:
             new_card_style = f"background-color: {TILE_UNCLICKED_BG_COLOR}; color: {TILE_UNCLICKED_TEXT_COLOR}; border: none;"
