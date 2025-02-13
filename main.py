@@ -4,6 +4,8 @@ import datetime
 import logging
 import asyncio
 import os
+from fastapi.staticfiles import StaticFiles
+from nicegui import app
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -371,15 +373,26 @@ def setup_head(background_color: str):
     """
     Set up common head elements: fonts, fitty JS, and background color.
     """
-    ui.add_head_html(f'<link href="https://fonts.cdnfonts.com/css/super-carnival" rel="stylesheet">')
-    ui.add_head_html("""
+    ui.add_css("""
+        
+            @font-face {
+                font-family: 'Super Carnival';
+                font-style: normal;
+                font-weight: 400;
+                /* Load the local .woff file from the static folder */
+                src: url('/static/Super Carnival.woff') format('woff');
+            }
+        
+    """)
+    
+    ui.add_head_html(f"""
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family={BOARD_TILE_FONT.replace(" ", "+")}:opsz@10..1000&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family={BOARD_TILE_FONT.replace(" ", "+")}&display=swap" rel="stylesheet">
     """)
     # Add CSS class for board tile fonts; you can later reference this class in your CSS.
     ui.add_head_html(get_google_font_css(BOARD_TILE_FONT, BOARD_TILE_FONT_WEIGHT, BOARD_TILE_FONT_STYLE, "board_tile"))
-
+    
     ui.add_head_html('<script src="https://cdn.jsdelivr.net/npm/fitty@2.3.6/dist/fitty.min.js"></script>')
     # Add html2canvas library and capture function.
     ui.add_head_html("""
@@ -394,7 +407,7 @@ def setup_head(background_color: str):
         // Run fitty to ensure text is resized and centered
         fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
         fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
-
+    
         // Wait a short period to ensure that the board is fully rendered and styles have settled.
         setTimeout(function() {
             html2canvas(boardElem, {
@@ -412,9 +425,9 @@ def setup_head(background_color: str):
     }
     </script>
     """)
-
+    
     ui.add_head_html(f'<style>body {{ background-color: {background_color}; }}</style>')
-
+    
     ui.add_head_html("""<script>
         document.addEventListener('DOMContentLoaded', () => {
             fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
@@ -427,7 +440,7 @@ def setup_head(background_color: str):
             fitty('.fit-header', { multiLine: true, minSize: 10, maxSize: 2000 });
         });
     </script>""")
-
+    
     # Use full width with padding so the header spans edge-to-edge
     with ui.element("div").classes("w-full"):
         ui.label("COMMIT !BINGO").classes("fit-header text-center").style(f"font-family: {HEADER_FONT_FAMILY}; color: {HEADER_TEXT_COLOR};")
@@ -491,7 +504,7 @@ def update_tile_styles(tile_buttons_dict: dict):
         phrase = board[r][c]
 
         if (r, c) in clicked_tiles:
-            new_card_style = f"background-color: {TILE_CLICKED_BG_COLOR}; color: {TILE_CLICKED_TEXT_COLOR}; border: 8px solid {TILE_UNCLICKED_BG_COLOR};"
+            new_card_style = f"background-color: {TILE_CLICKED_BG_COLOR}; color: {TILE_CLICKED_TEXT_COLOR}; border: none;"
             new_label_color = TILE_CLICKED_TEXT_COLOR
         else:
             new_card_style = f"background-color: {TILE_UNCLICKED_BG_COLOR}; color: {TILE_UNCLICKED_TEXT_COLOR}; border: none;"
@@ -609,6 +622,9 @@ def generate_new_board():
          seed_label.set_text(f"Seed: {today_seed}")
          seed_label.update()
     reset_board()
+
+# Mount the local 'static' directory so that files like "Super Carnival.woff" can be served
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Run the NiceGUI app
 ui.run(port=8080, title="Commit Bingo", dark=False)
