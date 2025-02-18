@@ -1,0 +1,49 @@
+name: Build, Test & Publish Helm Chart
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  release:
+    types: [published]
+
+jobs:
+  lint:
+    name: Lint Helm Chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v1
+
+      - name: Lint Helm Chart
+        run: helm lint helm-charts/bingo
+
+  publish:
+    name: Package and Publish Helm Chart
+    if: github.event_name == 'release'
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v1
+
+      - name: Package Helm Chart
+        run: |
+          mkdir -p dist
+          helm package helm-charts/bingo --destination offendingcommit/bingo
+
+      - name: Upload Helm Chart to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*.tgz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
