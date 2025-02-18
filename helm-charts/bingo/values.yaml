@@ -24,8 +24,42 @@ env:
 # ConfigMap data for phrases.
 # Edit or extend below key/value pairs as needed.
 phrases:
-  greeting: "Hello, world!"
-  farewell: "Goodbye, world!"
+  -  Can't nice things
+  -  Techno babble
+  -  Hell yeah!
+  -  Raided
+  -  That's Noice
+  -  Position one
+  -  How's my audio
+  -  Someone redeems hydrate
+  -  Threaten good time
+  -  Mentions mods
+  -  Says texas
+  -  Spins bonus wheel
+  -  Join discord
+  -  Holy smokes!
+  -  Says Cats or Dogs
+  -  Doot doots
+  -  Makes air quotes
+  -  Talks about ellee
+  -  Zoom
+  -  Sight lines
+  -  Talks about palia
+  -  Says Commitee
+  -  Dance party
+  -  That's nuts!
+  -  Says vel
+  -  Says LGS
+  -  Says Harlequin Law
+  -  Says BBQ
+  -  Says Pizza
+  -  Says Sushi
+  -  Says DevOps
+  -  Says Kubernetes
+  -  Says Palia Partner
+  -  Offending Tide
+  -  Thanks for the bitties
+  -  See Grand baby
 
 # Overrides for the fully qualified resource names.
 nameOverride: ""
