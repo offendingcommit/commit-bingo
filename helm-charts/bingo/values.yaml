@@ -1,0 +1,32 @@
+# Default values for bingo.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/offendingcommit/bingo
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  # Kubernetes service type (ClusterIP, NodePort, LoadBalancer)
+  type: ClusterIP
+  # Service port (the externally visible port)
+  port: 80
+
+# Container port (the port on which your app listens)
+containerPort: 8080
+
+# Environment variables for the container
+env:
+  PORT: "8080"
+  METRICS_PORT: "9090"
+
+# ConfigMap data for phrases.
+# Edit or extend below key/value pairs as needed.
+phrases:
+  greeting: "Hello, world!"
+  farewell: "Goodbye, world!"
+
+# Overrides for the fully qualified resource names.
+nameOverride: ""
+fullnameOverride: "" 

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "bingo.fullname" . }}-config
+data:
+  # The phrases are converted to YAML, making them easily consumable by your application.
+  phrases: |-
+{{ toYaml .Values.phrases | nindent 4 }} 
