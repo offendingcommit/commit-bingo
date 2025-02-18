@@ -13,6 +13,9 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 # Global variable to track phrases.txt modification time.
 last_phrases_mtime = os.path.getmtime("phrases.txt")
 
+HEADER_TEXT = "COMMIT !BINGO"
+HEADER_TEXT_COLOR = "#0CB2B3"             # Color for header text
+
 FREE_SPACE_TEXT = "FREE MEAT"
 FREE_SPACE_TEXT_COLOR = "#FF7f33"
 
@@ -25,7 +28,7 @@ TILE_UNCLICKED_TEXT_COLOR = "#100079"
 
 HOME_BG_COLOR = "#100079"                 # Background for home page
 STREAM_BG_COLOR = "#00FF00"               # Background for stream page
-HEADER_TEXT_COLOR = "#0CB2B3"             # Color for header text
+
 
 HEADER_FONT_FAMILY = "'Super Carnival', sans-serif"
 BOARD_TILE_FONT = "Inter"  # Set the desired Google Font for board tiles
@@ -443,7 +446,7 @@ def setup_head(background_color: str):
     
     # Use full width with padding so the header spans edge-to-edge
     with ui.element("div").classes("w-full"):
-        ui.label("COMMIT !BINGO").classes("fit-header text-center").style(f"font-family: {HEADER_FONT_FAMILY}; color: {HEADER_TEXT_COLOR};")
+        ui.label(f"{HEADER_TEXT}).classes("fit-header text-center").style(f"font-family: {HEADER_FONT_FAMILY}; color: {HEADER_TEXT_COLOR};")
 
 def get_google_font_css(font_name: str, weight: str, style: str, uniquifier: str) -> str:
     """
@@ -628,4 +631,4 @@ def generate_new_board():
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Run the NiceGUI app
-ui.run(port=8080, title="Commit Bingo", dark=False)
+ui.run(port=8080, title=f"{HEADER_TEXT}, dark=False)
