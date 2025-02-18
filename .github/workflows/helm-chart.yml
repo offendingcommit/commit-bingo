@@ -39,7 +39,7 @@ jobs:
       - name: Package Helm Chart
         run: |
           mkdir -p dist
-          helm package helm-charts/bingo --destination offendingcommit/bingo
+          helm package helm-charts/bingo --destination dist
 
       - name: Upload Helm Chart to GitHub Release
         uses: softprops/action-gh-release@v1
