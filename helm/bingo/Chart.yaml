@@ -1,0 +1,13 @@
+apiVersion: v2
+name: bingo
+description: A Helm chart for the Commit Bingo application
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - bingo
+  - nicegui
+  - python
+maintainers:
+  - name: Offending Commit
+    email: offendingcommit@gmail.com 

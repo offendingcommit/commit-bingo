@@ -22,7 +22,7 @@ jobs:
         uses: azure/setup-helm@v1
 
       - name: Lint Helm Chart
-        run: helm lint helm-charts/bingo
+        run: helm lint helm/bingo
 
   publish:
     name: Package and Publish Helm Chart
@@ -39,7 +39,7 @@ jobs:
       - name: Package Helm Chart
         run: |
           mkdir -p dist
-          helm package helm-charts/bingo --destination dist
+          helm package helm/bingo --destination dist
 
       - name: Upload Helm Chart to GitHub Release
         uses: softprops/action-gh-release@v1
