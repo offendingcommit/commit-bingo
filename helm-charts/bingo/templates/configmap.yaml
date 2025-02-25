@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ include "bingo.fullname" . }}-config
-data:
-  # Phrases for the 5x5 bingo board.
-  # Note: Provide at least 24 phrases. One free space is usually provided.
-  phrases.txt: |-
-{{ .Values.phrases | nindent 4 }} 

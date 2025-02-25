@@ -4,6 +4,7 @@
 set -e
 
 # Default values
+DIST_DIR="../dist"
 CHART_DIR="bingo"
 CHART_VERSION=$(grep 'version:' ${CHART_DIR}/Chart.yaml | awk '{print $2}')
 RELEASE_NAME="bingo"
@@ -53,15 +54,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "Packaging Helm chart ${CHART_DIR} version ${CHART_VERSION}..."
-helm package ${CHART_DIR}
+helm package ${CHART_DIR} --destination ${DIST_DIR}
 
 if [ "$DEPLOY" = true ]; then
   echo "Deploying chart to Kubernetes namespace ${NAMESPACE} with release name ${RELEASE_NAME}..."
-  helm upgrade --install ${RELEASE_NAME} ${CHART_DIR}-${CHART_VERSION}.tgz --namespace ${NAMESPACE} --create-namespace
+  helm upgrade --install ${RELEASE_NAME} ${DIST_DIR}/${CHART_DIR}-${CHART_VERSION}.tgz --namespace ${NAMESPACE} --create-namespace
 
   echo "Deployment complete. You can access the application using:"
   echo "kubectl port-forward -n ${NAMESPACE} svc/${RELEASE_NAME} 8080:8080"
 else
   echo "Chart packaged successfully. To deploy, run:"
-  echo "helm install ${RELEASE_NAME} ${CHART_DIR}-${CHART_VERSION}.tgz --namespace ${NAMESPACE} --create-namespace"
+  echo "helm install ${RELEASE_NAME} ${DIST_DIR}/${CHART_DIR}-${CHART_VERSION}.tgz --namespace ${NAMESPACE} --create-namespace"
 fi
