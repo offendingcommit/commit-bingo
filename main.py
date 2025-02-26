@@ -446,7 +446,7 @@ def setup_head(background_color: str):
     
     # Use full width with padding so the header spans edge-to-edge
     with ui.element("div").classes("w-full"):
-        ui.label(f"{HEADER_TEXT}).classes("fit-header text-center").style(f"font-family: {HEADER_FONT_FAMILY}; color: {HEADER_TEXT_COLOR};")
+        ui.label(f"{HEADER_TEXT}").classes("fit-header text-center").style(f"font-family: {HEADER_FONT_FAMILY}; color: {HEADER_TEXT_COLOR};")
 
 def get_google_font_css(font_name: str, weight: str, style: str, uniquifier: str) -> str:
     """
@@ -631,4 +631,4 @@ def generate_new_board():
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Run the NiceGUI app
-ui.run(port=8080, title=f"{HEADER_TEXT}, dark=False)
+ui.run(port=8080, title=f"{HEADER_TEXT}", dark=False)
