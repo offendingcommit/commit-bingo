@@ -1,10 +1,11 @@
 [tool.poetry]
 name = "bingo"
 version = "0.1.0"
-description = ""
+description = "A bingo board generator using NiceGUI"
 authors = ["Offending Commit <offendingcommit@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+repository = "https://github.com/offendingcommit/bingo"
 package-mode = false
 exclude = [".git", ".git/"]
 
@@ -12,7 +13,43 @@ exclude = [".git", ".git/"]
 python = "^3.12"
 nicegui = "^2.11.0"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+flake8 = "^7.0.0"
+black = "^24.2.0"
+isort = "^5.13.2"
+python-semantic-release = "^9.1.1"
 
 [build-system]
 requires = ["poetry-core>=1.8"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "--cov=src"
+
+[tool.semantic_release]
+version_variable = ["pyproject.toml:version"]
+branch = "main"
+changelog_file = "CHANGELOG.md"
+build_command = "poetry build"
+dist_path = "dist/"
+upload_to_pypi = false
+upload_to_release = true
+commit_subject = "chore(release): {version}"
+commit_message = "chore(release): version {version} [skip ci]"
+commit_author = "semantic-release <semantic-release@users.noreply.github.com>"
+major_on_zero = false
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 88
