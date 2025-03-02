@@ -13,7 +13,12 @@ def run_fitty_js():
                 }
             }, 50);
         """
-        ui.run_javascript(js_code)
+        # Handle the awaitable response properly
+        try:
+            ui.run_javascript(js_code, timeout=0.5)
+        except:
+            # We don't need to await the response in most cases, ignore any timeout
+            pass
     except Exception as e:
         logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
 

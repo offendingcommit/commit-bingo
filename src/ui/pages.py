@@ -57,16 +57,10 @@ def create_board_view(background_color: str, is_global: bool):
     # Create board container
     if is_global:
         container = ui.element("div").classes("home-board-container flex justify-center items-center w-full")
-        try:
-            ui.run_javascript("document.querySelector('.home-board-container').id = 'board-container'")
-        except Exception as e:
-            logging.debug(f"Setting board container ID failed: {e}")
+        container.set_id("board-container")  # Use set_id instead of JavaScript
     else:
         container = ui.element("div").classes("stream-board-container flex justify-center items-center w-full")
-        try:
-            ui.run_javascript("document.querySelector('.stream-board-container').id = 'board-container-stream'")
-        except Exception as e:
-            logging.debug(f"Setting stream container ID failed: {e}")
+        container.set_id("board-container-stream")  # Use set_id instead of JavaScript
     
     if is_global:
         # For home view, use global state
