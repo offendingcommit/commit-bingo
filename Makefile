@@ -1,31 +1,32 @@
-.PHONY: help install test lint format clean run build docker-build docker-run
+.PHONY: help install test lint format clean run run-monolithic build docker-build docker-run
 
 # Help command
 help:
 	@echo "BINGO Application Makefile Commands"
 	@echo ""
 	@echo "Usage:"
-	@echo "  make install  - Install dependencies"
-	@echo "  make run      - Run the application"
-	@echo "  make test     - Run tests"
-	@echo "  make lint     - Run linters"
-	@echo "  make format   - Format code"
-	@echo "  make clean    - Clean build artifacts and cache"
-	@echo "  make build    - Build the package"
-	@echo "  make docker-build - Build Docker image"
-	@echo "  make docker-run   - Run Docker container"
+	@echo "  make install        - Install dependencies"
+	@echo "  make run            - Run the modular application"
+	@echo "  make run-monolithic - Run the original monolithic application"
+	@echo "  make test           - Run tests"
+	@echo "  make lint           - Run linters"
+	@echo "  make format         - Format code"
+	@echo "  make clean          - Clean build artifacts and cache"
+	@echo "  make build          - Build the package"
+	@echo "  make docker-build   - Build Docker image"
+	@echo "  make docker-run     - Run Docker container"
 
 # Install dependencies
 install:
 	poetry install
 
-# Run application
+# Run application (modular version)
 run:
-	poetry run python main.py
-
-# Run modular app (when available)
-run-modular:
 	poetry run python app.py
+
+# Run original monolithic application
+run-monolithic:
+	poetry run python main.py
 
 # Run tests
 test:
