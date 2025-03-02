@@ -50,6 +50,7 @@ LABEL_CLASSES = "fit-text text-center select-none"
 # Keys can be "home" and "stream". Each value is a tuple: (container, tile_buttons).
 board_views = {}
 
+# We won't try to track active clients as it's not reliable across all NiceGUI versions
 board_iteration = 1
 
 # Global set to track winning patterns (rows, columns, & diagonals)
@@ -222,19 +223,54 @@ def split_phrase_into_lines(phrase: str, forced_lines: int = None) -> list:
 
 # Toggle tile click state (for example usage)
 def toggle_tile(row, col):
-    # Do not allow toggling for the FREE SPACE cell (center cell)
+    global clicked_tiles, tile_buttons  # Explicitly declare tile_buttons as global
     if (row, col) == (2, 2):
         return
     key = (row, col)
     if key in clicked_tiles:
-        logging.debug(f"Tile at {key} unclicked")
         clicked_tiles.remove(key)
     else:
-        logging.debug(f"Tile at {key} clicked")
         clicked_tiles.add(key)
     
     check_winner()
-    sync_board_state()
+    
+    for view_key, (container, tile_buttons_local) in board_views.items():
+        for (r, c), tile in tile_buttons_local.items():
+            phrase = board[r][c]
+            if (r, c) in clicked_tiles:
+                new_card_style = f"background-color: {TILE_CLICKED_BG_COLOR}; color: {TILE_CLICKED_TEXT_COLOR}; border: none; outline: 3px solid {TILE_CLICKED_TEXT_COLOR};"
+                new_label_color = TILE_CLICKED_TEXT_COLOR
+            else:
+                new_card_style = f"background-color: {TILE_UNCLICKED_BG_COLOR}; color: {TILE_UNCLICKED_TEXT_COLOR}; border: none;"
+                new_label_color = TILE_UNCLICKED_TEXT_COLOR
+            
+            tile["card"].style(new_card_style)
+            lines = split_phrase_into_lines(phrase)
+            line_count = len(lines)
+            new_label_style = get_line_style_for_lines(line_count, new_label_color)
+            
+            for label_info in tile["labels"]:
+                lbl = label_info["ref"]
+                lbl.classes(label_info["base_classes"])
+                lbl.style(new_label_style)
+                lbl.update()
+                
+            tile["card"].update()
+        
+        container.update()
+    
+    try:
+        js_code = """
+            setTimeout(function() {
+                if (typeof fitty !== 'undefined') {
+                    fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+                    fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+                }
+            }, 50);
+        """
+        ui.run_javascript(js_code)
+    except Exception as e:
+        logging.debug(f"JavaScript execution failed: {e}")
 
 # Check for Bingo win condition
 def check_winner():
@@ -321,9 +357,30 @@ def check_winner():
             ui.notify(sp_message, color="blue", duration=5)
 
 def sync_board_state():
-    # Update tile styles in every board view (e.g., home and stream)
-    for view_key, (container, tile_buttons_local) in board_views.items():
-        update_tile_styles(tile_buttons_local)
+    """
+    Update tile styles in every board view (e.g., home and stream).
+    """
+    try:
+        # Update tile styles in every board view (e.g., home and stream)
+        for view_key, (container, tile_buttons_local) in board_views.items():
+            update_tile_styles(tile_buttons_local)
+        
+        # Safely run JavaScript to resize text
+        try:
+            # Add a slight delay to ensure DOM updates have propagated
+            js_code = """
+                setTimeout(function() {
+                    if (typeof fitty !== 'undefined') {
+                        fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+                        fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+                    }
+                }, 50);
+            """
+            ui.run_javascript(js_code)
+        except Exception as e:
+            logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
+    except Exception as e:
+        logging.debug(f"Error in sync_board_state: {e}")
 
 def create_board_view(background_color: str, is_global: bool):
     """
@@ -334,11 +391,17 @@ def create_board_view(background_color: str, is_global: bool):
     setup_head(background_color)
     # Create the board container. For the home view, assign an ID to capture it.
     if is_global:
-         container = ui.element("div").classes("home-board-container flex justify-center items-center w-full")
-         ui.run_javascript("document.querySelector('.home-board-container').id = 'board-container'")
+        container = ui.element("div").classes("home-board-container flex justify-center items-center w-full")
+        try:
+            ui.run_javascript("document.querySelector('.home-board-container').id = 'board-container'")
+        except Exception as e:
+            logging.debug(f"Setting board container ID failed: {e}")
     else:
-         container = ui.element("div").classes("stream-board-container flex justify-center items-center w-full")
-         ui.run_javascript("document.querySelector('.stream-board-container').id = 'board-container-stream'")
+        container = ui.element("div").classes("stream-board-container flex justify-center items-center w-full")
+        try:
+            ui.run_javascript("document.querySelector('.stream-board-container').id = 'board-container-stream'")
+        except Exception as e:
+            logging.debug(f"Setting stream container ID failed: {e}")
      
     if is_global:
         global home_board_container, tile_buttons, seed_label
@@ -346,8 +409,12 @@ def create_board_view(background_color: str, is_global: bool):
         tile_buttons = {}  # Start with an empty dictionary.
         build_board(container, tile_buttons, toggle_tile)
         board_views["home"] = (container, tile_buttons)
-        # Add timers for synchronizing the global board.
-        ui.timer(1, check_phrases_file_change)
+        # Add timers for synchronizing the global board
+        try:
+            check_timer = ui.timer(1, check_phrases_file_change)
+        except Exception as e:
+            logging.warning(f"Error setting up timer: {e}")
+            
         global seed_label
         with ui.row().classes("w-full mt-4 items-center justify-center gap-4"):
              with ui.button("", icon="refresh", on_click=reset_board).classes("rounded-full w-12 h-12") as reset_btn:
@@ -365,12 +432,20 @@ def create_board_view(background_color: str, is_global: bool):
 @ui.page("/")
 def home_page():
     create_board_view(HOME_BG_COLOR, True)
-    ui.timer(0.1, sync_board_state)
+    try:
+        # Create a timer that deactivates when the client disconnects
+        timer = ui.timer(0.1, sync_board_state)
+    except Exception as e:
+        logging.warning(f"Error creating timer: {e}")
 
 @ui.page("/stream")
 def stream_page():
     create_board_view(STREAM_BG_COLOR, False)
-    ui.timer(0.1, sync_board_state)
+    try:
+        # Create a timer that deactivates when the client disconnects
+        timer = ui.timer(0.1, sync_board_state)
+    except Exception as e:
+        logging.warning(f"Error creating timer: {e}")
 
 def setup_head(background_color: str):
     """
@@ -408,8 +483,10 @@ def setup_head(background_color: str):
             return;
         }
         // Run fitty to ensure text is resized and centered
-        fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
-        fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+        if (typeof fitty !== 'undefined') {
+            fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+            fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+        }
     
         // Wait a short period to ensure that the board is fully rendered and styles have settled.
         setTimeout(function() {
@@ -426,22 +503,35 @@ def setup_head(background_color: str):
             });
         }, 500);  // Adjust delay if necessary
     }
+    
+    // Function to safely apply fitty
+    function applyFitty() {
+        if (typeof fitty !== 'undefined') {
+            fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+            fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+            fitty('.fit-header', { multiLine: true, minSize: 10, maxSize: 2000 });
+        }
+    }
     </script>
     """)
     
     ui.add_head_html(f'<style>body {{ background-color: {background_color}; }}</style>')
     
     ui.add_head_html("""<script>
-        document.addEventListener('DOMContentLoaded', () => {
-            fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
-            fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
-            fitty('.fit-header', { multiLine: true, minSize: 10, maxSize: 2000 });
+        // Run fitty when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(applyFitty, 100);  // Slight delay to ensure all elements are rendered
         });
-        window.addEventListener('resize', () => {
-            fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
-            fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
-            fitty('.fit-header', { multiLine: true, minSize: 10, maxSize: 2000 });
+        
+        // Run fitty when window is resized
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(applyFitty, 100);  // Debounce resize events
         });
+        
+        // Periodically check and reapply fitty for any dynamic changes
+        setInterval(applyFitty, 1000);
     </script>""")
     
     # Use full width with padding so the header spans edge-to-edge
@@ -532,10 +622,21 @@ def update_tile_styles(tile_buttons_dict: dict):
             # Update inline style (which may now use a new color due to tile click state).
             lbl.style(new_label_style)
             lbl.update()
-    ui.run_javascript(
-        "fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });"
-        "fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });"
-    )
+    
+    # Safely run JavaScript
+    try:
+        # Add a slight delay to ensure DOM updates have propagated
+        js_code = """
+            setTimeout(function() {
+                if (typeof fitty !== 'undefined') {
+                    fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+                    fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+                }
+            }, 50);
+        """
+        ui.run_javascript(js_code)
+    except Exception as e:
+        logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
 
 def check_phrases_file_change():
     """
@@ -589,10 +690,21 @@ def check_phrases_file_change():
             tile_buttons_local.clear()  # Clear local board dictionary.
             build_board(container, tile_buttons_local, toggle_tile)
             container.update()  # Force update so new styles are applied immediately.
-        ui.run_javascript(
-            "fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });"
-            "fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });"
-        )
+        
+        # Safely run JavaScript
+        try:
+            # Add a slight delay to ensure DOM updates have propagated
+            js_code = """
+                setTimeout(function() {
+                    if (typeof fitty !== 'undefined') {
+                        fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+                        fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+                    }
+                }, 50);
+            """
+            ui.run_javascript(js_code)
+        except Exception as e:
+            logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
 
 def reset_board():
     """

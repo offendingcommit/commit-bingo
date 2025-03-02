@@ -43,8 +43,17 @@ RUN --mount=type=cache,target=$POETRY_CACHE_DIR \
 # Copy the rest of the project
 COPY . /app
 
+# Create a non-root user and switch to it
+RUN adduser --disabled-password --gecos "" appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
 # Expose port 8080 (if required)
 EXPOSE 8080
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8080/ || exit 1
 
 # Set the default command to run the application
 CMD ["python", "main.py"]

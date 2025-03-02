@@ -27,6 +27,29 @@ spec:
       serviceAccountName: {{ include "bingo.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.persistence.enabled }}
+      initContainers:
+        - name: init-data
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              # Initialize phrases.txt if it doesn't exist
+              if [ ! -f /data/phrases/phrases.txt ]; then
+                cp /app/phrases.txt /data/phrases/phrases.txt
+              fi
+              # Initialize static files if directory is empty
+              if [ ! -d /data/static ] || [ -z "$(ls -A /data/static)" ]; then
+                mkdir -p /data/static
+                cp -r /app/static/* /data/static/
+              fi
+          volumeMounts:
+            - name: phrases-volume
+              mountPath: /data/phrases
+            - name: static-volume
+              mountPath: /data/static
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
