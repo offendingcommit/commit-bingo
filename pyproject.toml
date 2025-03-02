@@ -49,7 +49,17 @@ major_on_zero = false
 line-length = 88
 target-version = ["py312"]
 include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | __pycache__
+  | build
+  | dist
+)/
+'''
 
 [tool.isort]
 profile = "black"
 line_length = 88
+skip = [".venv", ".git", "__pycache__", "build", "dist"]
