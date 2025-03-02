@@ -16,14 +16,18 @@ def main():
     # Initialize core components
     initialize_phrases()
     
-    # Generate initial board
-    generate_board(board_iteration)
-    
-    # Set up routes and pages
-    setup_pages()
+    # Generate initial board with seed
+    global_board = generate_board(board_iteration)
+    if not global_board or len(global_board) == 0:
+        logging.error("Failed to generate board!")
+    else:
+        logging.info(f"Board generated successfully with {len(global_board)} rows")
     
     # Mount static files
     app.mount("/static", StaticFiles(directory="static"), name="static")
+    
+    # Set up routes and pages - do this after mounting static files
+    setup_pages()
     
     # Run the app
     ui.run(port=8080, title=f"{HEADER_TEXT}", dark=False)

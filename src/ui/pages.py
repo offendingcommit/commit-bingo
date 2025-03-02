@@ -92,27 +92,79 @@ def create_board_view(background_color: str, is_global: bool):
 @ui.page("/")
 def home_page():
     """Home page with interactive board."""
+    logging.info("Creating home page with board...")
+    # Ensure we have a board before trying to render it
+    from src.core.board import board
+    if not board or len(board) == 0:
+        logging.warning("Board is empty in home_page! Regenerating...")
+        from src.core.board import generate_board, board_iteration
+        generate_board(board_iteration)
+    
+    # Create the board view
     create_board_view(HOME_BG_COLOR, True)
+    
     try:
         # Create a timer that deactivates when the client disconnects
         timer = ui.timer(0.1, sync_board_state)
+        logging.info("Home page sync timer created successfully")
     except Exception as e:
-        logging.warning(f"Error creating timer: {e}")
+        logging.warning(f"Error creating home page timer: {e}")
+    
+    # Make sure JS is executed for text fitting
+    try:
+        from src.utils.javascript import run_fitty_js
+        ui.timer(0.5, run_fitty_js)
+    except Exception as e:
+        logging.warning(f"Error setting up fitty timer: {e}")
+    
+    return "Home page loaded"  # Return something to confirm the function ran
 
 @ui.page("/stream")
 def stream_page():
     """Stream overlay page."""
+    logging.info("Creating stream page with board...")
+    # Ensure we have a board before trying to render it
+    from src.core.board import board
+    if not board or len(board) == 0:
+        logging.warning("Board is empty in stream_page! Regenerating...")
+        from src.core.board import generate_board, board_iteration
+        generate_board(board_iteration)
+    
+    # Create the board view
     create_board_view(STREAM_BG_COLOR, False)
+    
     try:
         # Create a timer that deactivates when the client disconnects
         timer = ui.timer(0.1, sync_board_state)
+        logging.info("Stream page sync timer created successfully")
     except Exception as e:
-        logging.warning(f"Error creating timer: {e}")
+        logging.warning(f"Error creating stream page timer: {e}")
+    
+    # Make sure JS is executed for text fitting
+    try:
+        from src.utils.javascript import run_fitty_js
+        ui.timer(0.5, run_fitty_js)
+    except Exception as e:
+        logging.warning(f"Error setting up fitty timer: {e}")
+    
+    return "Stream page loaded"  # Return something to confirm the function ran
 
 def setup_pages():
     """Initialize all pages."""
-    # Make sure the page routes are registered
-    # The decorators should handle registration, but we include the functions here
-    # to ensure they're imported properly
-    home_page
-    stream_page
+    # Explicitly register the routes
+    # This ensures they're properly set up even if NiceGUI has trouble with decorators
+    # We use direct calls instead of just referencing to make sure they're active
+    logging.info("Setting up page routes...")
+    
+    # These will register routes due to the @ui.page decorators
+    if not getattr(home_page, "_is_registered", False):
+        logging.info("Registering home page route...")
+        home_page()
+        home_page._is_registered = True
+    
+    if not getattr(stream_page, "_is_registered", False):
+        logging.info("Registering stream page route...")
+        stream_page()
+        stream_page._is_registered = True
+    
+    logging.info("Page routes registered successfully")
