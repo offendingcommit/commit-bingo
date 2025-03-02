@@ -15,6 +15,7 @@ last_phrases_mtime = os.path.getmtime("phrases.txt")
 
 HEADER_TEXT = "COMMIT !BINGO"
 HEADER_TEXT_COLOR = "#0CB2B3"             # Color for header text
+CLOSED_HEADER_TEXT = "Bingo Is Closed"    # Text to display when game is closed
 
 FREE_SPACE_TEXT = "FREE MEAT"
 FREE_SPACE_TEXT_COLOR = "#FF7f33"
@@ -55,6 +56,12 @@ board_iteration = 1
 
 # Global set to track winning patterns (rows, columns, & diagonals)
 bingo_patterns = set()
+
+# Global flag to track if the game is closed
+is_game_closed = False
+
+# Global variable to store header label reference
+header_label = None
 
 def generate_board(seed_val: int):
     """
@@ -359,8 +366,40 @@ def check_winner():
 def sync_board_state():
     """
     Update tile styles in every board view (e.g., home and stream).
+    Also handles the game closed state to ensure consistency across views.
     """
     try:
+        global is_game_closed, header_label
+        
+        # If game is closed, make sure all views reflect that
+        if is_game_closed:
+            # Update header if available
+            if header_label:
+                header_label.set_text(CLOSED_HEADER_TEXT)
+                header_label.update()
+            
+            # Hide all board views
+            for view_key, (container, _) in board_views.items():
+                container.style("display: none;")
+                container.update()
+            
+            # Make sure controls row is showing only the Start New Game button
+            if 'controls_row' in globals():
+                # Check if controls row has been already updated
+                if controls_row.default_slot and len(controls_row.default_slot.children) != 1:
+                    controls_row.clear()
+                    with controls_row:
+                        with ui.button("", icon="autorenew", on_click=reopen_game).classes("rounded-full w-12 h-12") as new_game_btn:
+                            ui.tooltip("Start New Game")
+            
+            return
+        else:
+            # Ensure header text is correct when game is open
+            if header_label and header_label.text != HEADER_TEXT:
+                header_label.set_text(HEADER_TEXT)
+                header_label.update()
+        
+        # Normal update if game is not closed
         # Update tile styles in every board view (e.g., home and stream)
         for view_key, (container, tile_buttons_local) in board_views.items():
             update_tile_styles(tile_buttons_local)
@@ -415,12 +454,14 @@ def create_board_view(background_color: str, is_global: bool):
         except Exception as e:
             logging.warning(f"Error setting up timer: {e}")
             
-        global seed_label
-        with ui.row().classes("w-full mt-4 items-center justify-center gap-4"):
+        global seed_label, controls_row
+        with ui.row().classes("w-full mt-4 items-center justify-center gap-4") as controls_row:
              with ui.button("", icon="refresh", on_click=reset_board).classes("rounded-full w-12 h-12") as reset_btn:
                  ui.tooltip("Reset Board")
              with ui.button("", icon="autorenew", on_click=generate_new_board).classes("rounded-full w-12 h-12") as new_board_btn:
                  ui.tooltip("New Board")
+             with ui.button("", icon="close", on_click=close_game).classes("rounded-full w-12 h-12 bg-red-500") as close_btn:
+                 ui.tooltip("Close Game")
              seed_label = ui.label(f"Seed: {today_seed}").classes("text-sm text-center").style(
                  f"font-family: '{BOARD_TILE_FONT}', sans-serif; color: {TILE_UNCLICKED_BG_COLOR};"
              )
@@ -536,7 +577,8 @@ def setup_head(background_color: str):
     
     # Use full width with padding so the header spans edge-to-edge
     with ui.element("div").classes("w-full"):
-        ui.label(f"{HEADER_TEXT}").classes("fit-header text-center").style(f"font-family: {HEADER_FONT_FAMILY}; color: {HEADER_TEXT_COLOR};")
+        global header_label
+        header_label = ui.label(f"{HEADER_TEXT}").classes("fit-header text-center").style(f"font-family: {HEADER_FONT_FAMILY}; color: {HEADER_TEXT_COLOR};")
 
 def get_google_font_css(font_name: str, weight: str, style: str, uniquifier: str) -> str:
     """
@@ -738,6 +780,88 @@ def generate_new_board():
          seed_label.set_text(f"Seed: {today_seed}")
          seed_label.update()
     reset_board()
+
+def close_game():
+    """
+    Close the game - hide the board and update the header text.
+    This function is called when the close button is clicked.
+    """
+    global is_game_closed, header_label
+    is_game_closed = True
+    
+    # Update header text
+    if header_label:
+        header_label.set_text(CLOSED_HEADER_TEXT)
+        header_label.update()
+    
+    # Hide all board views (both home and stream)
+    for view_key, (container, tile_buttons_local) in board_views.items():
+        container.style("display: none;")
+        container.update()
+    
+    # Modify the controls row to only show the New Board button
+    if 'controls_row' in globals():
+        controls_row.clear()
+        with controls_row:
+            with ui.button("", icon="autorenew", on_click=reopen_game).classes("rounded-full w-12 h-12") as new_game_btn:
+                ui.tooltip("Start New Game")
+    
+    # Update stream page as well
+    ui.broadcast()  # Broadcast changes to all connected clients
+    
+    # Notify that game has been closed
+    ui.notify("Game has been closed", color="red", duration=3)
+    
+def reopen_game():
+    """
+    Reopen the game after it has been closed.
+    This regenerates a new board and resets the UI.
+    """
+    global is_game_closed, header_label, board_iteration, controls_row
+    
+    # Reset game state
+    is_game_closed = False
+    
+    # Update header text back to original
+    if header_label:
+        header_label.set_text(HEADER_TEXT)
+        header_label.update()
+    
+    # Generate a new board
+    board_iteration += 1
+    generate_board(board_iteration)
+    
+    # Rebuild the controls row with all buttons
+    if 'controls_row' in globals():
+        controls_row.clear()
+        global seed_label
+        with controls_row:
+            with ui.button("", icon="refresh", on_click=reset_board).classes("rounded-full w-12 h-12") as reset_btn:
+                ui.tooltip("Reset Board")
+            with ui.button("", icon="autorenew", on_click=generate_new_board).classes("rounded-full w-12 h-12") as new_board_btn:
+                ui.tooltip("New Board")
+            with ui.button("", icon="close", on_click=close_game).classes("rounded-full w-12 h-12 bg-red-500") as close_btn:
+                ui.tooltip("Close Game")
+            seed_label = ui.label(f"Seed: {today_seed}").classes("text-sm text-center").style(
+                f"font-family: '{BOARD_TILE_FONT}', sans-serif; color: {TILE_UNCLICKED_BG_COLOR};"
+            )
+    
+    # Recreate and show all board views
+    for view_key, (container, tile_buttons_local) in board_views.items():
+        container.style("display: block;")
+        container.clear()
+        tile_buttons_local.clear()
+        build_board(container, tile_buttons_local, toggle_tile)
+        container.update()
+    
+    # Reset clicked tiles except for FREE SPACE
+    reset_board()
+    
+    # Notify that a new game has started
+    ui.notify("New game started", color="green", duration=3)
+    
+    # Update stream page as well
+    ui.broadcast()
 
 # Mount the local 'static' directory so that files like "Super Carnival.woff" can be served
 app.mount("/static", StaticFiles(directory="static"), name="static")
