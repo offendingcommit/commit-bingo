@@ -1,21 +1,23 @@
-from nicegui import ui
-import random
+import asyncio
 import datetime
 import logging
-import asyncio
 import os
+import random
+
 from fastapi.staticfiles import StaticFiles
-from nicegui import app
+from nicegui import app, ui
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 # Global variable to track phrases.txt modification time.
 last_phrases_mtime = os.path.getmtime("phrases.txt")
 
 HEADER_TEXT = "COMMIT !BINGO"
-HEADER_TEXT_COLOR = "#0CB2B3"             # Color for header text
-CLOSED_HEADER_TEXT = "Bingo Is Closed"    # Text to display when game is closed
+HEADER_TEXT_COLOR = "#0CB2B3"  # Color for header text
+CLOSED_HEADER_TEXT = "Bingo Is Closed"  # Text to display when game is closed
 
 FREE_SPACE_TEXT = "FREE MEAT"
 FREE_SPACE_TEXT_COLOR = "#FF7f33"
@@ -27,19 +29,23 @@ TILE_UNCLICKED_BG_COLOR = "#1BEFF5"
 TILE_UNCLICKED_TEXT_COLOR = "#100079"
 
 
-HOME_BG_COLOR = "#100079"                 # Background for home page
-STREAM_BG_COLOR = "#00FF00"               # Background for stream page
+HOME_BG_COLOR = "#100079"  # Background for home page
+STREAM_BG_COLOR = "#00FF00"  # Background for stream page
 
 
 HEADER_FONT_FAMILY = "'Super Carnival', sans-serif"
 BOARD_TILE_FONT = "Inter"  # Set the desired Google Font for board tiles
 BOARD_TILE_FONT_WEIGHT = "700"  # Default weight for board tiles; adjust as needed.
-BOARD_TILE_FONT_STYLE = "normal"  # Default font style for board tiles; for example, "normal" or "italic"
+BOARD_TILE_FONT_STYLE = (
+    "normal"  # Default font style for board tiles; for example, "normal" or "italic"
+)
 
 # UI Class Constants
 BOARD_CONTAINER_CLASS = "flex justify-center items-center w-full"
 HEADER_CONTAINER_CLASS = "w-full"
-CARD_CLASSES = "relative p-2 rounded-xl shadow-8 w-full h-full flex items-center justify-center"
+CARD_CLASSES = (
+    "relative p-2 rounded-xl shadow-8 w-full h-full flex items-center justify-center"
+)
 COLUMN_CLASSES = "flex flex-col items-center justify-center gap-0 w-full"
 GRID_CONTAINER_CLASS = "w-full aspect-square p-4"
 GRID_CLASSES = "gap-2 h-full grid-rows-5"
@@ -63,6 +69,7 @@ is_game_closed = False
 # Global variable to store header label reference
 header_label = None
 
+
 def generate_board(seed_val: int):
     """
     Generate a new board using the provided seed value.
@@ -73,13 +80,14 @@ def generate_board(seed_val: int):
     random.seed(seed_val)
     shuffled_phrases = random.sample(phrases, 24)
     shuffled_phrases.insert(12, FREE_SPACE_TEXT)
-    board = [shuffled_phrases[i:i+5] for i in range(0, 25, 5)]
+    board = [shuffled_phrases[i : i + 5] for i in range(0, 25, 5)]
     clicked_tiles.clear()
     for r, row in enumerate(board):
         for c, phrase in enumerate(row):
             if phrase.upper() == FREE_SPACE_TEXT:
                 clicked_tiles.add((r, c))
     today_seed = f"{todays_seed}.{seed_val}"
+
 
 def get_line_style_for_lines(line_count: int, default_text_color: str) -> str:
     """
@@ -92,10 +100,11 @@ def get_line_style_for_lines(line_count: int, default_text_color: str) -> str:
     elif line_count == 2:
         lh = "1.2em"  # Slightly reduced spacing for two lines.
     elif line_count == 3:
-        lh = "0.9em"    # Even tighter spacing for three lines.
+        lh = "0.9em"  # Even tighter spacing for three lines.
     else:
         lh = "0.7em"  # For four or more lines.
     return f"font-family: '{BOARD_TILE_FONT}', sans-serif; font-weight: {BOARD_TILE_FONT_WEIGHT}; font-style: {BOARD_TILE_FONT_STYLE}; padding: 0; margin: 0; color: {default_text_color}; line-height: {lh};"
+
 
 # Read phrases from a text file and convert them to uppercase.
 with open("phrases.txt", "r") as f:
@@ -108,6 +117,7 @@ for p in raw_phrases:
     if p not in seen:
         seen.add(p)
         unique_phrases.append(p)
+
 
 # Optional: filter out phrases with too many repeated words.
 def has_too_many_repeats(phrase, threshold=0.5):
@@ -122,9 +132,12 @@ def has_too_many_repeats(phrase, threshold=0.5):
     unique_count = len(set(words))
     ratio = unique_count / len(words)
     if ratio < threshold:
-        logging.debug(f"Discarding phrase '{phrase}' due to repeats: {unique_count}/{len(words)} = {ratio:.2f} < {threshold}")
+        logging.debug(
+            f"Discarding phrase '{phrase}' due to repeats: {unique_count}/{len(words)} = {ratio:.2f} < {threshold}"
+        )
         return True
     return False
+
 
 phrases = [p for p in unique_phrases if not has_too_many_repeats(p)]
 
@@ -135,6 +148,7 @@ tile_icons = {}  # {(row, col): icon reference}
 
 # Initialize the board using the default iteration value.
 generate_board(board_iteration)
+
 
 def split_phrase_into_lines(phrase: str, forced_lines: int = None) -> list:
     """
@@ -158,75 +172,81 @@ def split_phrase_into_lines(phrase: str, forced_lines: int = None) -> list:
     candidates = []  # list of tuples: (number_of_lines, diff, candidate)
 
     # 2-line candidate
-    best_diff_2 = float('inf')
+    best_diff_2 = float("inf")
     best_seg_2 = None
     for i in range(1, n):
-         seg1 = words[:i]
-         seg2 = words[i:]
-         len1 = segment_length(seg1)
-         len2 = segment_length(seg2)
-         diff = abs(len1 - len2)
-         if diff < best_diff_2:
-              best_diff_2 = diff
-              best_seg_2 = [" ".join(seg1), " ".join(seg2)]
+        seg1 = words[:i]
+        seg2 = words[i:]
+        len1 = segment_length(seg1)
+        len2 = segment_length(seg2)
+        diff = abs(len1 - len2)
+        if diff < best_diff_2:
+            best_diff_2 = diff
+            best_seg_2 = [" ".join(seg1), " ".join(seg2)]
     if best_seg_2 is not None:
-         candidates.append((2, best_diff_2, best_seg_2))
-              
+        candidates.append((2, best_diff_2, best_seg_2))
+
     # 3-line candidate (if at least 4 words)
     if n >= 4:
-         best_diff_3 = float('inf')
-         best_seg_3 = None
-         for i in range(1, n-1):
-             for j in range(i+1, n):
-                 seg1 = words[:i]
-                 seg2 = words[i:j]
-                 seg3 = words[j:]
-                 len1 = segment_length(seg1)
-                 len2 = segment_length(seg2)
-                 len3 = segment_length(seg3)
-                 current_diff = max(len1, len2, len3) - min(len1, len2, len3)
-                 if current_diff < best_diff_3:
-                     best_diff_3 = current_diff
-                     best_seg_3 = [" ".join(seg1), " ".join(seg2), " ".join(seg3)]
-         if best_seg_3 is not None:
-             candidates.append((3, best_diff_3, best_seg_3))
+        best_diff_3 = float("inf")
+        best_seg_3 = None
+        for i in range(1, n - 1):
+            for j in range(i + 1, n):
+                seg1 = words[:i]
+                seg2 = words[i:j]
+                seg3 = words[j:]
+                len1 = segment_length(seg1)
+                len2 = segment_length(seg2)
+                len3 = segment_length(seg3)
+                current_diff = max(len1, len2, len3) - min(len1, len2, len3)
+                if current_diff < best_diff_3:
+                    best_diff_3 = current_diff
+                    best_seg_3 = [" ".join(seg1), " ".join(seg2), " ".join(seg3)]
+        if best_seg_3 is not None:
+            candidates.append((3, best_diff_3, best_seg_3))
 
     # 4-line candidate (if at least 5 words)
     if n >= 5:
-         best_diff_4 = float('inf')
-         best_seg_4 = None
-         for i in range(1, n-2):
-             for j in range(i+1, n-1):
-                 for k in range(j+1, n):
-                     seg1 = words[:i]
-                     seg2 = words[i:j]
-                     seg3 = words[j:k]
-                     seg4 = words[k:]
-                     len1 = segment_length(seg1)
-                     len2 = segment_length(seg2)
-                     len3 = segment_length(seg3)
-                     len4 = segment_length(seg4)
-                     diff = max(len1, len2, len3, len4) - min(len1, len2, len3, len4)
-                     if diff < best_diff_4:
-                         best_diff_4 = diff
-                         best_seg_4 = [" ".join(seg1), " ".join(seg2), " ".join(seg3), " ".join(seg4)]
-         if best_seg_4 is not None:
-             candidates.append((4, best_diff_4, best_seg_4))
+        best_diff_4 = float("inf")
+        best_seg_4 = None
+        for i in range(1, n - 2):
+            for j in range(i + 1, n - 1):
+                for k in range(j + 1, n):
+                    seg1 = words[:i]
+                    seg2 = words[i:j]
+                    seg3 = words[j:k]
+                    seg4 = words[k:]
+                    len1 = segment_length(seg1)
+                    len2 = segment_length(seg2)
+                    len3 = segment_length(seg3)
+                    len4 = segment_length(seg4)
+                    diff = max(len1, len2, len3, len4) - min(len1, len2, len3, len4)
+                    if diff < best_diff_4:
+                        best_diff_4 = diff
+                        best_seg_4 = [
+                            " ".join(seg1),
+                            " ".join(seg2),
+                            " ".join(seg3),
+                            " ".join(seg4),
+                        ]
+        if best_seg_4 is not None:
+            candidates.append((4, best_diff_4, best_seg_4))
 
     # If a forced number of lines is specified, try to return that candidate first.
     if forced_lines is not None:
-         forced_candidates = [cand for cand in candidates if cand[0] == forced_lines]
-         if forced_candidates:
-              _, _, best_candidate = min(forced_candidates, key=lambda x: x[1])
-              return best_candidate
+        forced_candidates = [cand for cand in candidates if cand[0] == forced_lines]
+        if forced_candidates:
+            _, _, best_candidate = min(forced_candidates, key=lambda x: x[1])
+            return best_candidate
 
     # Otherwise, choose the candidate with the smallest diff.
     if candidates:
-         _, best_diff, best_candidate = min(candidates, key=lambda x: x[1])
-         return best_candidate
+        _, best_diff, best_candidate = min(candidates, key=lambda x: x[1])
+        return best_candidate
     else:
-         # fallback (should never happen)
-         return [" ".join(words)]
+        # fallback (should never happen)
+        return [" ".join(words)]
+
 
 # Toggle tile click state (for example usage)
 def toggle_tile(row, col):
@@ -238,9 +258,9 @@ def toggle_tile(row, col):
         clicked_tiles.remove(key)
     else:
         clicked_tiles.add(key)
-    
+
     check_winner()
-    
+
     for view_key, (container, tile_buttons_local) in board_views.items():
         for (r, c), tile in tile_buttons_local.items():
             phrase = board[r][c]
@@ -250,22 +270,22 @@ def toggle_tile(row, col):
             else:
                 new_card_style = f"background-color: {TILE_UNCLICKED_BG_COLOR}; color: {TILE_UNCLICKED_TEXT_COLOR}; border: none;"
                 new_label_color = TILE_UNCLICKED_TEXT_COLOR
-            
+
             tile["card"].style(new_card_style)
             lines = split_phrase_into_lines(phrase)
             line_count = len(lines)
             new_label_style = get_line_style_for_lines(line_count, new_label_color)
-            
+
             for label_info in tile["labels"]:
                 lbl = label_info["ref"]
                 lbl.classes(label_info["base_classes"])
                 lbl.style(new_label_style)
                 lbl.update()
-                
+
             tile["card"].update()
-        
+
         container.update()
-    
+
     try:
         js_code = """
             setTimeout(function() {
@@ -278,6 +298,7 @@ def toggle_tile(row, col):
         ui.run_javascript(js_code)
     except Exception as e:
         logging.debug(f"JavaScript execution failed: {e}")
+
 
 # Check for Bingo win condition
 def check_winner():
@@ -298,7 +319,7 @@ def check_winner():
             new_patterns.append("diag_main")
 
     # Check anti-diagonal.
-    if all((i, 4-i) in clicked_tiles for i in range(5)):
+    if all((i, 4 - i) in clicked_tiles for i in range(5)):
         if "diag_anti" not in bingo_patterns:
             new_patterns.append("diag_anti")
 
@@ -310,7 +331,7 @@ def check_winner():
             new_patterns.append("blackout")
 
     # 4 Corners: top-left, top-right, bottom-left, bottom-right.
-    if all(pos in clicked_tiles for pos in [(0,0), (0,4), (4,0), (4,4)]):
+    if all(pos in clicked_tiles for pos in [(0, 0), (0, 4), (4, 0), (4, 4)]):
         if "four_corners" not in bingo_patterns:
             new_patterns.append("four_corners")
 
@@ -321,12 +342,19 @@ def check_winner():
             new_patterns.append("plus")
 
     # X shape: both diagonals complete.
-    if all((i, i) in clicked_tiles for i in range(5)) and all((i, 4-i) in clicked_tiles for i in range(5)):
+    if all((i, i) in clicked_tiles for i in range(5)) and all(
+        (i, 4 - i) in clicked_tiles for i in range(5)
+    ):
         if "x_shape" not in bingo_patterns:
             new_patterns.append("x_shape")
 
     # Outside edges (perimeter): all border cells clicked.
-    perimeter_cells = {(0, c) for c in range(5)} | {(4, c) for c in range(5)} | {(r, 0) for r in range(5)} | {(r, 4) for r in range(5)}
+    perimeter_cells = (
+        {(0, c) for c in range(5)}
+        | {(4, c) for c in range(5)}
+        | {(r, 0) for r in range(5)}
+        | {(r, 4) for r in range(5)}
+    )
     if all(cell in clicked_tiles for cell in perimeter_cells):
         if "perimeter" not in bingo_patterns:
             new_patterns.append("perimeter")
@@ -363,6 +391,7 @@ def check_winner():
             sp_message = sp.replace("_", " ").title() + " Bingo!"
             ui.notify(sp_message, color="blue", duration=5)
 
+
 def sync_board_state():
     """
     Update tile styles in every board view (e.g., home and stream).
@@ -370,40 +399,45 @@ def sync_board_state():
     """
     try:
         global is_game_closed, header_label
-        
+
         # If game is closed, make sure all views reflect that
         if is_game_closed:
             # Update header if available
             if header_label:
                 header_label.set_text(CLOSED_HEADER_TEXT)
                 header_label.update()
-            
+
             # Hide all board views
             for view_key, (container, _) in board_views.items():
                 container.style("display: none;")
                 container.update()
-            
+
             # Make sure controls row is showing only the Start New Game button
-            if 'controls_row' in globals():
+            if "controls_row" in globals():
                 # Check if controls row has been already updated
-                if controls_row.default_slot and len(controls_row.default_slot.children) != 1:
+                if (
+                    controls_row.default_slot
+                    and len(controls_row.default_slot.children) != 1
+                ):
                     controls_row.clear()
                     with controls_row:
-                        with ui.button("", icon="autorenew", on_click=reopen_game).classes("rounded-full w-12 h-12") as new_game_btn:
+                        with ui.button(
+                            "", icon="autorenew", on_click=reopen_game
+                        ).classes("rounded-full w-12 h-12") as new_game_btn:
                             ui.tooltip("Start New Game")
-            
+
             return
         else:
             # Ensure header text is correct when game is open
             if header_label and header_label.text != HEADER_TEXT:
                 header_label.set_text(HEADER_TEXT)
                 header_label.update()
-        
+
         # Normal update if game is not closed
         # Update tile styles in every board view (e.g., home and stream)
         for view_key, (container, tile_buttons_local) in board_views.items():
             update_tile_styles(tile_buttons_local)
-        
+
         # Safely run JavaScript to resize text
         try:
             # Add a slight delay to ensure DOM updates have propagated
@@ -417,9 +451,12 @@ def sync_board_state():
             """
             ui.run_javascript(js_code)
         except Exception as e:
-            logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
+            logging.debug(
+                f"JavaScript execution failed (likely disconnected client): {e}"
+            )
     except Exception as e:
         logging.debug(f"Error in sync_board_state: {e}")
+
 
 def create_board_view(background_color: str, is_global: bool):
     """
@@ -430,18 +467,26 @@ def create_board_view(background_color: str, is_global: bool):
     setup_head(background_color)
     # Create the board container. For the home view, assign an ID to capture it.
     if is_global:
-        container = ui.element("div").classes("home-board-container flex justify-center items-center w-full")
+        container = ui.element("div").classes(
+            "home-board-container flex justify-center items-center w-full"
+        )
         try:
-            ui.run_javascript("document.querySelector('.home-board-container').id = 'board-container'")
+            ui.run_javascript(
+                "document.querySelector('.home-board-container').id = 'board-container'"
+            )
         except Exception as e:
             logging.debug(f"Setting board container ID failed: {e}")
     else:
-        container = ui.element("div").classes("stream-board-container flex justify-center items-center w-full")
+        container = ui.element("div").classes(
+            "stream-board-container flex justify-center items-center w-full"
+        )
         try:
-            ui.run_javascript("document.querySelector('.stream-board-container').id = 'board-container-stream'")
+            ui.run_javascript(
+                "document.querySelector('.stream-board-container').id = 'board-container-stream'"
+            )
         except Exception as e:
             logging.debug(f"Setting stream container ID failed: {e}")
-     
+
     if is_global:
         global home_board_container, tile_buttons, seed_label
         home_board_container = container
@@ -453,22 +498,35 @@ def create_board_view(background_color: str, is_global: bool):
             check_timer = ui.timer(1, check_phrases_file_change)
         except Exception as e:
             logging.warning(f"Error setting up timer: {e}")
-            
+
         global seed_label, controls_row
-        with ui.row().classes("w-full mt-4 items-center justify-center gap-4") as controls_row:
-             with ui.button("", icon="refresh", on_click=reset_board).classes("rounded-full w-12 h-12") as reset_btn:
-                 ui.tooltip("Reset Board")
-             with ui.button("", icon="autorenew", on_click=generate_new_board).classes("rounded-full w-12 h-12") as new_board_btn:
-                 ui.tooltip("New Board")
-             with ui.button("", icon="close", on_click=close_game).classes("rounded-full w-12 h-12 bg-red-500") as close_btn:
-                 ui.tooltip("Close Game")
-             seed_label = ui.label(f"Seed: {today_seed}").classes("text-sm text-center").style(
-                 f"font-family: '{BOARD_TILE_FONT}', sans-serif; color: {TILE_UNCLICKED_BG_COLOR};"
-             )
+        with ui.row().classes(
+            "w-full mt-4 items-center justify-center gap-4"
+        ) as controls_row:
+            with ui.button("", icon="refresh", on_click=reset_board).classes(
+                "rounded-full w-12 h-12"
+            ) as reset_btn:
+                ui.tooltip("Reset Board")
+            with ui.button("", icon="autorenew", on_click=generate_new_board).classes(
+                "rounded-full w-12 h-12"
+            ) as new_board_btn:
+                ui.tooltip("New Board")
+            with ui.button("", icon="close", on_click=close_game).classes(
+                "rounded-full w-12 h-12 bg-red-500"
+            ) as close_btn:
+                ui.tooltip("Close Game")
+            seed_label = (
+                ui.label(f"Seed: {today_seed}")
+                .classes("text-sm text-center")
+                .style(
+                    f"font-family: '{BOARD_TILE_FONT}', sans-serif; color: {TILE_UNCLICKED_BG_COLOR};"
+                )
+            )
     else:
         local_tile_buttons = {}
         build_board(container, local_tile_buttons, toggle_tile)
         board_views["stream"] = (container, local_tile_buttons)
+
 
 @ui.page("/")
 def home_page():
@@ -479,6 +537,7 @@ def home_page():
     except Exception as e:
         logging.warning(f"Error creating timer: {e}")
 
+
 @ui.page("/stream")
 def stream_page():
     create_board_view(STREAM_BG_COLOR, False)
@@ -488,11 +547,13 @@ def stream_page():
     except Exception as e:
         logging.warning(f"Error creating timer: {e}")
 
+
 def setup_head(background_color: str):
     """
     Set up common head elements: fonts, fitty JS, and background color.
     """
-    ui.add_css("""
+    ui.add_css(
+        """
         
             @font-face {
                 font-family: 'Super Carnival';
@@ -502,19 +563,29 @@ def setup_head(background_color: str):
                 src: url('/static/Super%20Carnival.woff') format('woff');
             }
         
-    """)
-    
-    ui.add_head_html(f"""
+    """
+    )
+
+    ui.add_head_html(
+        f"""
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family={BOARD_TILE_FONT.replace(" ", "+")}&display=swap" rel="stylesheet">
-    """)
+    """
+    )
     # Add CSS class for board tile fonts; you can later reference this class in your CSS.
-    ui.add_head_html(get_google_font_css(BOARD_TILE_FONT, BOARD_TILE_FONT_WEIGHT, BOARD_TILE_FONT_STYLE, "board_tile"))
-    
-    ui.add_head_html('<script src="https://cdn.jsdelivr.net/npm/fitty@2.3.6/dist/fitty.min.js"></script>')
+    ui.add_head_html(
+        get_google_font_css(
+            BOARD_TILE_FONT, BOARD_TILE_FONT_WEIGHT, BOARD_TILE_FONT_STYLE, "board_tile"
+        )
+    )
+
+    ui.add_head_html(
+        '<script src="https://cdn.jsdelivr.net/npm/fitty@2.3.6/dist/fitty.min.js"></script>'
+    )
     # Add html2canvas library and capture function.
-    ui.add_head_html("""
+    ui.add_head_html(
+        """
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script>
     function captureBoardAndDownload(seed) {
@@ -554,11 +625,13 @@ def setup_head(background_color: str):
         }
     }
     </script>
-    """)
-    
-    ui.add_head_html(f'<style>body {{ background-color: {background_color}; }}</style>')
-    
-    ui.add_head_html("""<script>
+    """
+    )
+
+    ui.add_head_html(f"<style>body {{ background-color: {background_color}; }}</style>")
+
+    ui.add_head_html(
+        """<script>
         // Run fitty when DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(applyFitty, 100);  // Slight delay to ensure all elements are rendered
@@ -573,14 +646,22 @@ def setup_head(background_color: str):
         
         // Periodically check and reapply fitty for any dynamic changes
         setInterval(applyFitty, 1000);
-    </script>""")
-    
+    </script>"""
+    )
+
     # Use full width with padding so the header spans edge-to-edge
     with ui.element("div").classes("w-full"):
         global header_label
-        header_label = ui.label(f"{HEADER_TEXT}").classes("fit-header text-center").style(f"font-family: {HEADER_FONT_FAMILY}; color: {HEADER_TEXT_COLOR};")
+        header_label = (
+            ui.label(f"{HEADER_TEXT}")
+            .classes("fit-header text-center")
+            .style(f"font-family: {HEADER_FONT_FAMILY}; color: {HEADER_TEXT_COLOR};")
+        )
 
-def get_google_font_css(font_name: str, weight: str, style: str, uniquifier: str) -> str:
+
+def get_google_font_css(
+    font_name: str, weight: str, style: str, uniquifier: str
+) -> str:
     """
     Returns a CSS style block defining a class for the specified Google font.
     'uniquifier' is used as the CSS class name.
@@ -596,6 +677,7 @@ def get_google_font_css(font_name: str, weight: str, style: str, uniquifier: str
 </style>
 """
 
+
 def build_board(parent, tile_buttons_dict: dict, on_tile_click):
     """
     Build the common Bingo board in the given parent element.
@@ -609,27 +691,60 @@ def build_board(parent, tile_buttons_dict: dict, on_tile_click):
                         card = ui.card().classes(CARD_CLASSES).style("cursor: pointer;")
                         labels_list = []  # initialize list for storing label metadata
                         with card:
-                            with ui.column().classes("flex flex-col items-center justify-center gap-0 w-full"):
-                                default_text_color = FREE_SPACE_TEXT_COLOR if phrase.upper() == FREE_SPACE_TEXT else TILE_UNCLICKED_TEXT_COLOR
+                            with ui.column().classes(
+                                "flex flex-col items-center justify-center gap-0 w-full"
+                            ):
+                                default_text_color = (
+                                    FREE_SPACE_TEXT_COLOR
+                                    if phrase.upper() == FREE_SPACE_TEXT
+                                    else TILE_UNCLICKED_TEXT_COLOR
+                                )
                                 lines = split_phrase_into_lines(phrase)
                                 line_count = len(lines)
                                 for line in lines:
-                                    with ui.row().classes("w-full items-center justify-center"):
-                                        base_class = LABEL_SMALL_CLASSES if len(line) <= 3 else LABEL_CLASSES
-                                        lbl = ui.label(line).classes(base_class).style(get_line_style_for_lines(line_count, default_text_color))
-                                        labels_list.append({
-                                            "ref": lbl,
-                                            "base_classes": base_class,
-                                            "base_style": get_line_style_for_lines(line_count, default_text_color)
-                                        })
-                        tile_buttons_dict[(row_idx, col_idx)] = {"card": card, "labels": labels_list}
+                                    with ui.row().classes(
+                                        "w-full items-center justify-center"
+                                    ):
+                                        base_class = (
+                                            LABEL_SMALL_CLASSES
+                                            if len(line) <= 3
+                                            else LABEL_CLASSES
+                                        )
+                                        lbl = (
+                                            ui.label(line)
+                                            .classes(base_class)
+                                            .style(
+                                                get_line_style_for_lines(
+                                                    line_count, default_text_color
+                                                )
+                                            )
+                                        )
+                                        labels_list.append(
+                                            {
+                                                "ref": lbl,
+                                                "base_classes": base_class,
+                                                "base_style": get_line_style_for_lines(
+                                                    line_count, default_text_color
+                                                ),
+                                            }
+                                        )
+                        tile_buttons_dict[(row_idx, col_idx)] = {
+                            "card": card,
+                            "labels": labels_list,
+                        }
                         if phrase.upper() == FREE_SPACE_TEXT:
                             clicked_tiles.add((row_idx, col_idx))
-                            card.style(f"color: {FREE_SPACE_TEXT_COLOR}; border: none; outline: 3px solid {TILE_CLICKED_TEXT_COLOR};")
-                            
+                            card.style(
+                                f"color: {FREE_SPACE_TEXT_COLOR}; border: none; outline: 3px solid {TILE_CLICKED_TEXT_COLOR};"
+                            )
+
                         else:
-                            card.on("click", lambda e, r=row_idx, c=col_idx: on_tile_click(r, c))
+                            card.on(
+                                "click",
+                                lambda e, r=row_idx, c=col_idx: on_tile_click(r, c),
+                            )
     return tile_buttons_dict
+
 
 def update_tile_styles(tile_buttons_dict: dict):
     """
@@ -664,7 +779,7 @@ def update_tile_styles(tile_buttons_dict: dict):
             # Update inline style (which may now use a new color due to tile click state).
             lbl.style(new_label_style)
             lbl.update()
-    
+
     # Safely run JavaScript
     try:
         # Add a slight delay to ensure DOM updates have propagated
@@ -679,6 +794,7 @@ def update_tile_styles(tile_buttons_dict: dict):
         ui.run_javascript(js_code)
     except Exception as e:
         logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
+
 
 def check_phrases_file_change():
     """
@@ -719,7 +835,9 @@ def check_phrases_file_change():
             unique_count = len(set(words))
             ratio = unique_count / len(words)
             if ratio < threshold:
-                logging.debug(f"Discarding phrase '{phrase}' due to repeats: {unique_count}/{len(words)} = {ratio:.2f} < {threshold}")
+                logging.debug(
+                    f"Discarding phrase '{phrase}' due to repeats: {unique_count}/{len(words)} = {ratio:.2f} < {threshold}"
+                )
                 return True
             return False
 
@@ -732,7 +850,7 @@ def check_phrases_file_change():
             tile_buttons_local.clear()  # Clear local board dictionary.
             build_board(container, tile_buttons_local, toggle_tile)
             container.update()  # Force update so new styles are applied immediately.
-        
+
         # Safely run JavaScript
         try:
             # Add a slight delay to ensure DOM updates have propagated
@@ -746,7 +864,10 @@ def check_phrases_file_change():
             """
             ui.run_javascript(js_code)
         except Exception as e:
-            logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
+            logging.debug(
+                f"JavaScript execution failed (likely disconnected client): {e}"
+            )
+
 
 def reset_board():
     """
@@ -762,6 +883,7 @@ def reset_board():
                 clicked_tiles.add((r, c))
     sync_board_state()
 
+
 def generate_new_board():
     """
     Generate a new board with an incremented iteration seed and update all board views.
@@ -771,15 +893,16 @@ def generate_new_board():
     generate_board(board_iteration)
     # Update all board views (both home and stream)
     for view_key, (container, tile_buttons_local) in board_views.items():
-         container.clear()
-         tile_buttons_local.clear()
-         build_board(container, tile_buttons_local, toggle_tile)
-         container.update()
+        container.clear()
+        tile_buttons_local.clear()
+        build_board(container, tile_buttons_local, toggle_tile)
+        container.update()
     # Update the seed label if available
-    if 'seed_label' in globals():
-         seed_label.set_text(f"Seed: {today_seed}")
-         seed_label.update()
+    if "seed_label" in globals():
+        seed_label.set_text(f"Seed: {today_seed}")
+        seed_label.update()
     reset_board()
+
 
 def close_game():
     """
@@ -788,64 +911,77 @@ def close_game():
     """
     global is_game_closed, header_label
     is_game_closed = True
-    
-    # Update header text
+
+    # Update header text on the current view
     if header_label:
         header_label.set_text(CLOSED_HEADER_TEXT)
         header_label.update()
-    
+
     # Hide all board views (both home and stream)
     for view_key, (container, tile_buttons_local) in board_views.items():
         container.style("display: none;")
         container.update()
-    
+
     # Modify the controls row to only show the New Board button
-    if 'controls_row' in globals():
+    if "controls_row" in globals():
         controls_row.clear()
         with controls_row:
-            with ui.button("", icon="autorenew", on_click=reopen_game).classes("rounded-full w-12 h-12") as new_game_btn:
+            with ui.button("", icon="autorenew", on_click=reopen_game).classes(
+                "rounded-full w-12 h-12"
+            ) as new_game_btn:
                 ui.tooltip("Start New Game")
-    
-    # Update stream page as well
+
+    # Update stream page as well - this will trigger sync_board_state on connected clients
     ui.broadcast()  # Broadcast changes to all connected clients
-    
+
     # Notify that game has been closed
     ui.notify("Game has been closed", color="red", duration=3)
-    
+
+
 def reopen_game():
     """
     Reopen the game after it has been closed.
     This regenerates a new board and resets the UI.
     """
     global is_game_closed, header_label, board_iteration, controls_row
-    
+
     # Reset game state
     is_game_closed = False
-    
-    # Update header text back to original
+
+    # Update header text back to original for the current view
     if header_label:
         header_label.set_text(HEADER_TEXT)
         header_label.update()
-    
+
     # Generate a new board
     board_iteration += 1
     generate_board(board_iteration)
-    
+
     # Rebuild the controls row with all buttons
-    if 'controls_row' in globals():
+    if "controls_row" in globals():
         controls_row.clear()
         global seed_label
         with controls_row:
-            with ui.button("", icon="refresh", on_click=reset_board).classes("rounded-full w-12 h-12") as reset_btn:
+            with ui.button("", icon="refresh", on_click=reset_board).classes(
+                "rounded-full w-12 h-12"
+            ) as reset_btn:
                 ui.tooltip("Reset Board")
-            with ui.button("", icon="autorenew", on_click=generate_new_board).classes("rounded-full w-12 h-12") as new_board_btn:
+            with ui.button("", icon="autorenew", on_click=generate_new_board).classes(
+                "rounded-full w-12 h-12"
+            ) as new_board_btn:
                 ui.tooltip("New Board")
-            with ui.button("", icon="close", on_click=close_game).classes("rounded-full w-12 h-12 bg-red-500") as close_btn:
+            with ui.button("", icon="close", on_click=close_game).classes(
+                "rounded-full w-12 h-12 bg-red-500"
+            ) as close_btn:
                 ui.tooltip("Close Game")
-            seed_label = ui.label(f"Seed: {today_seed}").classes("text-sm text-center").style(
-                f"font-family: '{BOARD_TILE_FONT}', sans-serif; color: {TILE_UNCLICKED_BG_COLOR};"
+            seed_label = (
+                ui.label(f"Seed: {today_seed}")
+                .classes("text-sm text-center")
+                .style(
+                    f"font-family: '{BOARD_TILE_FONT}', sans-serif; color: {TILE_UNCLICKED_BG_COLOR};"
+                )
             )
-    
+
     # Recreate and show all board views
     for view_key, (container, tile_buttons_local) in board_views.items():
         container.style("display: block;")
@@ -853,15 +989,17 @@ def reopen_game():
         tile_buttons_local.clear()
         build_board(container, tile_buttons_local, toggle_tile)
         container.update()
-    
+
     # Reset clicked tiles except for FREE SPACE
     reset_board()
-    
+
     # Notify that a new game has started
     ui.notify("New game started", color="green", duration=3)
-    
-    # Update stream page as well
+
+    # Update stream page and all other connected clients
+    # This will trigger sync_board_state on all clients including the stream view
     ui.broadcast()
+
 
 # Mount the local 'static' directory so that files like "Super Carnival.woff" can be served
 app.mount("/static", StaticFiles(directory="static"), name="static")
