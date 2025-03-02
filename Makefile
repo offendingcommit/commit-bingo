@@ -21,6 +21,10 @@ install:
 
 # Run application
 run:
+	poetry run python main.py
+
+# Run modular app (when available)
+run-modular:
 	poetry run python app.py
 
 # Run tests
