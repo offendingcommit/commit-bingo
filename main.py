@@ -50,6 +50,7 @@ LABEL_CLASSES = "fit-text text-center select-none"
 # Keys can be "home" and "stream". Each value is a tuple: (container, tile_buttons).
 board_views = {}
 
+# We won't try to track active clients as it's not reliable across all NiceGUI versions
 board_iteration = 1
 
 # Global set to track winning patterns (rows, columns, & diagonals)
@@ -321,9 +322,24 @@ def check_winner():
             ui.notify(sp_message, color="blue", duration=5)
 
 def sync_board_state():
-    # Update tile styles in every board view (e.g., home and stream)
-    for view_key, (container, tile_buttons_local) in board_views.items():
-        update_tile_styles(tile_buttons_local)
+    """
+    Update tile styles in every board view (e.g., home and stream).
+    """
+    try:
+        # Update tile styles in every board view (e.g., home and stream)
+        for view_key, (container, tile_buttons_local) in board_views.items():
+            update_tile_styles(tile_buttons_local)
+        
+        # Safely run JavaScript
+        try:
+            ui.run_javascript(
+                "fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });"
+                "fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });"
+            )
+        except Exception as e:
+            logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
+    except Exception as e:
+        logging.debug(f"Error in sync_board_state: {e}")
 
 def create_board_view(background_color: str, is_global: bool):
     """
@@ -334,11 +350,17 @@ def create_board_view(background_color: str, is_global: bool):
     setup_head(background_color)
     # Create the board container. For the home view, assign an ID to capture it.
     if is_global:
-         container = ui.element("div").classes("home-board-container flex justify-center items-center w-full")
-         ui.run_javascript("document.querySelector('.home-board-container').id = 'board-container'")
+        container = ui.element("div").classes("home-board-container flex justify-center items-center w-full")
+        try:
+            ui.run_javascript("document.querySelector('.home-board-container').id = 'board-container'")
+        except Exception as e:
+            logging.debug(f"Setting board container ID failed: {e}")
     else:
-         container = ui.element("div").classes("stream-board-container flex justify-center items-center w-full")
-         ui.run_javascript("document.querySelector('.stream-board-container').id = 'board-container-stream'")
+        container = ui.element("div").classes("stream-board-container flex justify-center items-center w-full")
+        try:
+            ui.run_javascript("document.querySelector('.stream-board-container').id = 'board-container-stream'")
+        except Exception as e:
+            logging.debug(f"Setting stream container ID failed: {e}")
      
     if is_global:
         global home_board_container, tile_buttons, seed_label
@@ -346,8 +368,12 @@ def create_board_view(background_color: str, is_global: bool):
         tile_buttons = {}  # Start with an empty dictionary.
         build_board(container, tile_buttons, toggle_tile)
         board_views["home"] = (container, tile_buttons)
-        # Add timers for synchronizing the global board.
-        ui.timer(1, check_phrases_file_change)
+        # Add timers for synchronizing the global board
+        try:
+            check_timer = ui.timer(1, check_phrases_file_change)
+        except Exception as e:
+            logging.warning(f"Error setting up timer: {e}")
+            
         global seed_label
         with ui.row().classes("w-full mt-4 items-center justify-center gap-4"):
              with ui.button("", icon="refresh", on_click=reset_board).classes("rounded-full w-12 h-12") as reset_btn:
@@ -365,12 +391,20 @@ def create_board_view(background_color: str, is_global: bool):
 @ui.page("/")
 def home_page():
     create_board_view(HOME_BG_COLOR, True)
-    ui.timer(0.1, sync_board_state)
+    try:
+        # Create a timer that deactivates when the client disconnects
+        timer = ui.timer(0.1, sync_board_state)
+    except Exception as e:
+        logging.warning(f"Error creating timer: {e}")
 
 @ui.page("/stream")
 def stream_page():
     create_board_view(STREAM_BG_COLOR, False)
-    ui.timer(0.1, sync_board_state)
+    try:
+        # Create a timer that deactivates when the client disconnects
+        timer = ui.timer(0.1, sync_board_state)
+    except Exception as e:
+        logging.warning(f"Error creating timer: {e}")
 
 def setup_head(background_color: str):
     """
@@ -532,10 +566,15 @@ def update_tile_styles(tile_buttons_dict: dict):
             # Update inline style (which may now use a new color due to tile click state).
             lbl.style(new_label_style)
             lbl.update()
-    ui.run_javascript(
-        "fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });"
-        "fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });"
-    )
+    
+    # Safely run JavaScript
+    try:
+        ui.run_javascript(
+            "fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });"
+            "fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });"
+        )
+    except Exception as e:
+        logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
 
 def check_phrases_file_change():
     """
@@ -589,10 +628,15 @@ def check_phrases_file_change():
             tile_buttons_local.clear()  # Clear local board dictionary.
             build_board(container, tile_buttons_local, toggle_tile)
             container.update()  # Force update so new styles are applied immediately.
-        ui.run_javascript(
-            "fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });"
-            "fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });"
-        )
+        
+        # Safely run JavaScript
+        try:
+            ui.run_javascript(
+                "fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });"
+                "fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });"
+            )
+        except Exception as e:
+            logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
 
 def reset_board():
     """
