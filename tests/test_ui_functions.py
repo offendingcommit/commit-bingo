@@ -11,33 +11,28 @@ sys.modules["nicegui"] = MagicMock()
 sys.modules["nicegui.ui"] = MagicMock()
 sys.modules["fastapi.staticfiles"] = MagicMock()
 
-# Now import functions from the main module
-from main import (
-    close_game,
-    create_board_view,
-    get_google_font_css,
-    get_line_style_for_lines,
-    reopen_game,
-    sync_board_state,
-    update_tile_styles,
-)
+# Import functions from the new modular structure
+from src.utils.text_processing import get_line_style_for_lines, get_google_font_css
+from src.ui.sync import update_tile_styles, sync_board_state
+from src.core.game_logic import close_game, reopen_game
+from src.ui.board_builder import create_board_view
 
 
 class TestUIFunctions(unittest.TestCase):
     def setUp(self):
         # Setup common test data and mocks
         self.patches = [
-            patch("main.BOARD_TILE_FONT", "Inter"),
-            patch("main.BOARD_TILE_FONT_WEIGHT", "700"),
-            patch("main.BOARD_TILE_FONT_STYLE", "normal"),
-            patch("main.TILE_CLICKED_BG_COLOR", "#100079"),
-            patch("main.TILE_CLICKED_TEXT_COLOR", "#1BEFF5"),
-            patch("main.TILE_UNCLICKED_BG_COLOR", "#1BEFF5"),
-            patch("main.TILE_UNCLICKED_TEXT_COLOR", "#100079"),
-            patch("main.FREE_SPACE_TEXT", "FREE SPACE"),
-            patch("main.FREE_SPACE_TEXT_COLOR", "#FF7f33"),
-            patch("main.board", [["PHRASE1", "PHRASE2"], ["PHRASE3", "FREE SPACE"]]),
-            patch("main.clicked_tiles", {(1, 1)}),  # FREE SPACE is clicked
+            patch("src.config.constants.BOARD_TILE_FONT", "Inter"),
+            patch("src.config.constants.BOARD_TILE_FONT_WEIGHT", "700"),
+            patch("src.config.constants.BOARD_TILE_FONT_STYLE", "normal"),
+            patch("src.config.constants.TILE_CLICKED_BG_COLOR", "#100079"),
+            patch("src.config.constants.TILE_CLICKED_TEXT_COLOR", "#1BEFF5"),
+            patch("src.config.constants.TILE_UNCLICKED_BG_COLOR", "#1BEFF5"),
+            patch("src.config.constants.TILE_UNCLICKED_TEXT_COLOR", "#100079"),
+            patch("src.config.constants.FREE_SPACE_TEXT", "FREE SPACE"),
+            patch("src.config.constants.FREE_SPACE_TEXT_COLOR", "#FF7f33"),
+            patch("src.core.game_logic.board", [["PHRASE1", "PHRASE2"], ["PHRASE3", "FREE SPACE"]]),
+            patch("src.core.game_logic.clicked_tiles", {(1, 1)}),  # FREE SPACE is clicked
         ]
 
         for p in self.patches:
@@ -50,7 +45,7 @@ class TestUIFunctions(unittest.TestCase):
 
     def test_get_line_style_for_lines(self):
         """Test generating style strings based on line count"""
-        import main
+        from src.config.constants import BOARD_TILE_FONT
 
         default_text_color = "#000000"
 
@@ -58,7 +53,7 @@ class TestUIFunctions(unittest.TestCase):
         style_1 = get_line_style_for_lines(1, default_text_color)
         self.assertIn("line-height: 1.5em", style_1)
         self.assertIn(f"color: {default_text_color}", style_1)
-        self.assertIn(f"font-family: '{main.BOARD_TILE_FONT}'", style_1)
+        self.assertIn(f"font-family: '{BOARD_TILE_FONT}'", style_1)
 
         # Test style for two lines
         style_2 = get_line_style_for_lines(2, default_text_color)
