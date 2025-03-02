@@ -42,6 +42,9 @@ venv.bak/
 *.log
 logs/
 .cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # OS files
 .DS_Store
