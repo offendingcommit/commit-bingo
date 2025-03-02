@@ -162,3 +162,92 @@ The project utilizes GitHub Actions for continuous integration and deployment:
    - Updates CHANGELOG.md
    - Creates Git tag for the release
    - Publishes release on GitHub
+
+## Pre-Push Checklist
+
+Before pushing changes to the repository, run these checks locally to ensure the CI pipeline will pass:
+
+```bash
+# 1. Run linters to ensure code quality and style
+poetry run flake8 main.py src/ tests/
+poetry run black --check .
+poetry run isort --check .
+
+# 2. Run tests to ensure functionality works
+poetry run pytest
+
+# 3. Check test coverage to ensure sufficient testing
+poetry run pytest --cov=main --cov-report=term-missing
+
+# 4. Fix any linting issues
+poetry run black .
+poetry run isort .
+
+# 5. Run tests again after fixing linting issues
+poetry run pytest
+
+# 6. Verify application starts without errors
+poetry run python main.py  # (Ctrl+C to exit after confirming it starts)
+```
+
+### Common CI Failure Points to Check:
+
+1. **Code Style Issues**:
+   - Inconsistent indentation
+   - Line length exceeding 88 characters
+   - Missing docstrings
+   - Improper import ordering
+
+2. **Test Failures**:
+   - Broken functionality due to recent changes
+   - Missing tests for new features
+   - Incorrectly mocked dependencies in tests
+   - Race conditions in async tests
+
+3. **Coverage Thresholds**:
+   - Insufficient test coverage on new code
+   - Missing edge case tests
+   - Uncovered exception handling paths
+
+### Quick Fix Command Sequence
+
+If you encounter CI failures, this sequence often resolves common issues:
+
+```bash
+# Fix style issues
+poetry run black .
+poetry run isort .
+
+# Run tests with coverage to identify untested code
+poetry run pytest --cov=main --cov-report=term-missing
+
+# Add tests for any uncovered code sections then run again
+poetry run pytest
+```
+
+## Testing Game State Synchronization
+
+Special attention should be paid to testing game state synchronization between the main view and the stream view:
+
+```bash
+# Run specific tests for state synchronization
+poetry run pytest -v tests/test_ui_functions.py::TestUIFunctions::test_header_updates_on_both_paths
+poetry run pytest -v tests/test_ui_functions.py::TestUIFunctions::test_stream_header_update_when_game_closed
+```
+
+When making changes to game state management, especially related to:
+- Game closing/reopening
+- Header text updates
+- Board visibility
+- Broadcast mechanisms
+
+Verify both these scenarios:
+1. Changes made on main view are reflected in stream view
+2. Changes persist across page refreshes
+3. New connections to stream page see the correct state
+
+Common issues:
+- Missing ui.broadcast() calls
+- Not handling header updates across different views
+- Not checking if game is closed in sync_board_state
+- Ignoring exception handling for disconnected clients
