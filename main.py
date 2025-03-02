@@ -223,19 +223,54 @@ def split_phrase_into_lines(phrase: str, forced_lines: int = None) -> list:
 
 # Toggle tile click state (for example usage)
 def toggle_tile(row, col):
-    # Do not allow toggling for the FREE SPACE cell (center cell)
+    global clicked_tiles, tile_buttons  # Explicitly declare tile_buttons as global
     if (row, col) == (2, 2):
         return
     key = (row, col)
     if key in clicked_tiles:
-        logging.debug(f"Tile at {key} unclicked")
         clicked_tiles.remove(key)
     else:
-        logging.debug(f"Tile at {key} clicked")
         clicked_tiles.add(key)
     
     check_winner()
-    sync_board_state()
+    
+    for view_key, (container, tile_buttons_local) in board_views.items():
+        for (r, c), tile in tile_buttons_local.items():
+            phrase = board[r][c]
+            if (r, c) in clicked_tiles:
+                new_card_style = f"background-color: {TILE_CLICKED_BG_COLOR}; color: {TILE_CLICKED_TEXT_COLOR}; border: none; outline: 3px solid {TILE_CLICKED_TEXT_COLOR};"
+                new_label_color = TILE_CLICKED_TEXT_COLOR
+            else:
+                new_card_style = f"background-color: {TILE_UNCLICKED_BG_COLOR}; color: {TILE_UNCLICKED_TEXT_COLOR}; border: none;"
+                new_label_color = TILE_UNCLICKED_TEXT_COLOR
+            
+            tile["card"].style(new_card_style)
+            lines = split_phrase_into_lines(phrase)
+            line_count = len(lines)
+            new_label_style = get_line_style_for_lines(line_count, new_label_color)
+            
+            for label_info in tile["labels"]:
+                lbl = label_info["ref"]
+                lbl.classes(label_info["base_classes"])
+                lbl.style(new_label_style)
+                lbl.update()
+                
+            tile["card"].update()
+        
+        container.update()
+    
+    try:
+        js_code = """
+            setTimeout(function() {
+                if (typeof fitty !== 'undefined') {
+                    fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+                    fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+                }
+            }, 50);
+        """
+        ui.run_javascript(js_code)
+    except Exception as e:
+        logging.debug(f"JavaScript execution failed: {e}")
 
 # Check for Bingo win condition
 def check_winner():
@@ -330,12 +365,18 @@ def sync_board_state():
         for view_key, (container, tile_buttons_local) in board_views.items():
             update_tile_styles(tile_buttons_local)
         
-        # Safely run JavaScript
+        # Safely run JavaScript to resize text
         try:
-            ui.run_javascript(
-                "fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });"
-                "fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });"
-            )
+            # Add a slight delay to ensure DOM updates have propagated
+            js_code = """
+                setTimeout(function() {
+                    if (typeof fitty !== 'undefined') {
+                        fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+                        fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+                    }
+                }, 50);
+            """
+            ui.run_javascript(js_code)
         except Exception as e:
             logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
     except Exception as e:
@@ -442,8 +483,10 @@ def setup_head(background_color: str):
             return;
         }
         // Run fitty to ensure text is resized and centered
-        fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
-        fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+        if (typeof fitty !== 'undefined') {
+            fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+            fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+        }
     
         // Wait a short period to ensure that the board is fully rendered and styles have settled.
         setTimeout(function() {
@@ -460,22 +503,35 @@ def setup_head(background_color: str):
             });
         }, 500);  // Adjust delay if necessary
     }
+    
+    // Function to safely apply fitty
+    function applyFitty() {
+        if (typeof fitty !== 'undefined') {
+            fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+            fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+            fitty('.fit-header', { multiLine: true, minSize: 10, maxSize: 2000 });
+        }
+    }
     </script>
     """)
     
     ui.add_head_html(f'<style>body {{ background-color: {background_color}; }}</style>')
     
     ui.add_head_html("""<script>
-        document.addEventListener('DOMContentLoaded', () => {
-            fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
-            fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
-            fitty('.fit-header', { multiLine: true, minSize: 10, maxSize: 2000 });
+        // Run fitty when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(applyFitty, 100);  // Slight delay to ensure all elements are rendered
         });
-        window.addEventListener('resize', () => {
-            fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
-            fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
-            fitty('.fit-header', { multiLine: true, minSize: 10, maxSize: 2000 });
+        
+        // Run fitty when window is resized
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(applyFitty, 100);  // Debounce resize events
         });
+        
+        // Periodically check and reapply fitty for any dynamic changes
+        setInterval(applyFitty, 1000);
     </script>""")
     
     # Use full width with padding so the header spans edge-to-edge
@@ -569,10 +625,16 @@ def update_tile_styles(tile_buttons_dict: dict):
     
     # Safely run JavaScript
     try:
-        ui.run_javascript(
-            "fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });"
-            "fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });"
-        )
+        # Add a slight delay to ensure DOM updates have propagated
+        js_code = """
+            setTimeout(function() {
+                if (typeof fitty !== 'undefined') {
+                    fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+                    fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+                }
+            }, 50);
+        """
+        ui.run_javascript(js_code)
     except Exception as e:
         logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
 
@@ -631,10 +693,16 @@ def check_phrases_file_change():
         
         # Safely run JavaScript
         try:
-            ui.run_javascript(
-                "fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });"
-                "fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });"
-            )
+            # Add a slight delay to ensure DOM updates have propagated
+            js_code = """
+                setTimeout(function() {
+                    if (typeof fitty !== 'undefined') {
+                        fitty('.fit-text', { multiLine: true, minSize: 10, maxSize: 1000 });
+                        fitty('.fit-text-small', { multiLine: true, minSize: 10, maxSize: 72 });
+                    }
+                }, 50);
+            """
+            ui.run_javascript(js_code)
         except Exception as e:
             logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
 
