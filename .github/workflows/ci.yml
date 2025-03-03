@@ -72,11 +72,14 @@ jobs:
     permissions:
       id-token: write
       contents: write
+      issues: write
+      pull-requests: write
 
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -96,17 +99,22 @@ jobs:
     
     - name: Python Semantic Release
       id: semantic-release
-      uses: python-semantic-release/python-semantic-release@v9.1.1
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        
-    - name: Publish release to GitHub
-      if: steps.semantic-release.outputs.released == 'true'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        echo "Released version ${{ steps.semantic-release.outputs.version }}"
-        gh release create v${{ steps.semantic-release.outputs.version }} \
-          --title "v${{ steps.semantic-release.outputs.version }}" \
-          --notes "${{ steps.semantic-release.outputs.release_notes }}" \
-          dist/*
+        git config --global user.name "semantic-release"
+        git config --global user.email "semantic-release@users.noreply.github.com"
+        # Debug information
+        echo "Current git status:"
+        git status
+        echo "Current branch:"
+        git branch
+        # Run semantic release with verbose output
+        poetry run semantic-release --verbose version
+        # Only publish if version command succeeded
+        if [ $? -eq 0 ]; then
+          poetry run semantic-release --verbose publish
+        else
+          echo "Version command failed, skipping publish"
+          exit 1
+        fi
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
