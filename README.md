@@ -3,7 +3,7 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/OffendingCommit/commit-bingo)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/OffendingCommit/commit-bingo/ci.yml)
 ![GitHub](https://img.shields.io/github/license/OffendingCommit/commit-bingo)
-[![YouTube Channel Subscribers](https://img.shields.io/youtube/channel/subscribers/UCQCU2f9J06IEVCyFx1k4T1g)](https://youtube.com/@offendingcommit)
+[![YouTube Channel Subscribers](https://img.shields.io/youtube/channel/subscribers/UCRg6iaKDCCzP_BWXZ0r5sdw)](https://youtube.com/@offendingcommit)
 [![Twitch Status](https://img.shields.io/twitch/status/offendingcommit)](https://twitch.tv/offendingcommit)
 
 A customizable bingo board generator built with NiceGUI and Python. Create interactive bingo games for your streams, meetings, or events!
