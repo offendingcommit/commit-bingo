@@ -20,6 +20,7 @@ flake8 = "^7.0.0"
 black = "^24.2.0"
 isort = "^5.13.2"
 python-semantic-release = "^9.1.1"
+mypy = "^1.15.0"
 
 [build-system]
 requires = ["poetry-core>=1.8"]

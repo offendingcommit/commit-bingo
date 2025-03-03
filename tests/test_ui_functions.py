@@ -143,7 +143,8 @@ class TestUIFunctions(unittest.TestCase):
 
     @patch("src.core.game_logic.ui")
     @patch("src.core.game_logic.header_label")
-    def test_close_game(self, mock_header_label, mock_ui):
+    @patch("src.ui.board_builder.build_closed_message")
+    def test_close_game(self, mock_build_closed_message, mock_header_label, mock_ui):
         """Test closing the game functionality"""
         from src.config.constants import CLOSED_HEADER_TEXT
         from src.core.game_logic import board_views, close_game, is_game_closed
@@ -192,10 +193,10 @@ class TestUIFunctions(unittest.TestCase):
             mock_header_label.set_text.assert_called_once_with(CLOSED_HEADER_TEXT)
             mock_header_label.update.assert_called_once()
 
-            # Verify containers are hidden
-            mock_container1.style.assert_called_once_with("display: none;")
+            # Verify containers are cleared and the closed message is built
+            mock_container1.clear.assert_called_once()
             mock_container1.update.assert_called_once()
-            mock_container2.style.assert_called_once_with("display: none;")
+            mock_container2.clear.assert_called_once()
             mock_container2.update.assert_called_once()
 
             # Note: In the new structure, the controls_row clear might not be called directly
@@ -216,7 +217,10 @@ class TestUIFunctions(unittest.TestCase):
             globals()["is_game_closed"] = original_is_game_closed
 
     @patch("main.ui.run_javascript")
-    def test_sync_board_state_when_game_closed(self, mock_run_js):
+    @patch("main.build_closed_message")
+    def test_sync_board_state_when_game_closed(
+        self, mock_build_closed_message, mock_run_js
+    ):
         """Test sync_board_state behavior when game is closed"""
         import main
 
@@ -251,10 +255,10 @@ class TestUIFunctions(unittest.TestCase):
         main.header_label.set_text.assert_called_once_with(main.CLOSED_HEADER_TEXT)
         main.header_label.update.assert_called_once()
 
-        # Verify containers are hidden
-        mock_container1.style.assert_called_once_with("display: none;")
+        # Verify containers are cleared and closed message is built
+        mock_container1.clear.assert_called_once()
         mock_container1.update.assert_called_once()
-        mock_container2.style.assert_called_once_with("display: none;")
+        mock_container2.clear.assert_called_once()
         mock_container2.update.assert_called_once()
 
         # Verify controls_row is modified

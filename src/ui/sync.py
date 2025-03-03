@@ -24,9 +24,12 @@ def sync_board_state():
                 header_label.set_text(CLOSED_HEADER_TEXT)
                 header_label.update()
 
-            # Hide all board views
+            # Show closed message in all board views
+            from src.ui.board_builder import build_closed_message
+
             for view_key, (container, _) in board_views.items():
-                container.style("display: none;")
+                container.clear()
+                build_closed_message(container)
                 container.update()
 
             # Make sure controls row is showing only the Start New Game button

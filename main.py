@@ -418,9 +418,10 @@ def sync_board_state():
                 header_label.set_text(CLOSED_HEADER_TEXT)
                 header_label.update()
 
-            # Hide all board views
+            # Show closed message in all board views
             for view_key, (container, _) in board_views.items():
-                container.style("display: none;")
+                container.clear()
+                build_closed_message(container)
                 container.update()
 
             # Make sure controls row is showing only the Start New Game button
@@ -915,9 +916,39 @@ def generate_new_board():
     reset_board()
 
 
+def build_closed_message(parent):
+    """
+    Build a message indicating the game is closed, to be displayed in place of the board.
+
+    Args:
+        parent: The parent UI element to build the message in
+    """
+    with parent:
+        with ui.element("div").classes(GRID_CONTAINER_CLASS):
+            with ui.element("div").classes(
+                "flex justify-center items-center h-full w-full"
+            ):
+                ui.label("GAME CLOSED").classes("text-center fit-header").style(
+                    f"font-family: {HEADER_FONT_FAMILY}; color: {FREE_SPACE_TEXT_COLOR}; font-size: 6rem;"
+                )
+
+    # Run JavaScript to ensure text is resized properly
+    try:
+        js_code = """
+            setTimeout(function() {
+                if (typeof fitty !== 'undefined') {
+                    fitty('.fit-header', { multiLine: true, minSize: 10, maxSize: 2000 });
+                }
+            }, 50);
+        """
+        ui.run_javascript(js_code)
+    except Exception as e:
+        logging.debug(f"JavaScript execution failed: {e}")
+
+
 def close_game():
     """
-    Close the game - hide the board and update the header text.
+    Close the game - show closed message instead of the board and update the header text.
     This function is called when the close button is clicked.
     """
     global is_game_closed, header_label
@@ -928,9 +959,10 @@ def close_game():
         header_label.set_text(CLOSED_HEADER_TEXT)
         header_label.update()
 
-    # Hide all board views (both home and stream)
+    # Show closed message in all board views
     for view_key, (container, tile_buttons_local) in board_views.items():
-        container.style("display: none;")
+        container.clear()
+        build_closed_message(container)
         container.update()
 
     # Modify the controls row to only show the New Board button
