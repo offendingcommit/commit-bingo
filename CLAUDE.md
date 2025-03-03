@@ -59,6 +59,13 @@ make build    # Build package
 - **Line Length**: Max 88 characters (Black's default)
 - **Code Formatting**: Use Black for code formatting and isort for import sorting
 
+## NiceGUI Documentation References
+- **UI Components**: https://nicegui.io/documentation/
+- **Labels**: https://nicegui.io/documentation/label (for text binding with `bind_text_from()`)
+- **Data Binding**: https://nicegui.io/documentation/binding_basics (for reactive UI state)
+- **Broadcast**: https://nicegui.io/documentation/events (for multi-client synchronization)
+- **Page Events**: https://nicegui.io/documentation/page (for lifecycle events)
+
 ## Project Structure
 - `app.py`: Main entry point for modular application
 - `src/`: Source code directory

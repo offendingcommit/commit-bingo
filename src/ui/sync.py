@@ -19,10 +19,12 @@ def sync_board_state():
     try:
         # If game is closed, make sure all views reflect that
         if is_game_closed:
-            # Update header if available
-            if header_label:
-                header_label.set_text(CLOSED_HEADER_TEXT)
-                header_label.update()
+            # Update header state (this should happen automatically through binding)
+            import src.core.game_logic
+            from src.core.game_logic import current_header_text
+
+            if hasattr(src.core.game_logic, "current_header_text"):
+                src.core.game_logic.current_header_text = CLOSED_HEADER_TEXT
 
             # Hide all board views
             for view_key, (container, _) in board_views.items():
@@ -33,7 +35,6 @@ def sync_board_state():
             from src.core.game_logic import controls_row, reopen_game
 
             if controls_row:
-
                 # Check if controls row has been already updated
                 if (
                     controls_row.default_slot
@@ -48,10 +49,12 @@ def sync_board_state():
 
             return
         else:
-            # Ensure header text is correct when game is open
-            if header_label and header_label.text != HEADER_TEXT:
-                header_label.set_text(HEADER_TEXT)
-                header_label.update()
+            # Ensure header state is correct when game is open (should happen automatically through binding)
+            import src.core.game_logic
+            from src.core.game_logic import current_header_text
+
+            if hasattr(src.core.game_logic, "current_header_text"):
+                src.core.game_logic.current_header_text = HEADER_TEXT
 
         # Normal update if game is not closed
         # Update tile styles in every board view (e.g., home and stream)

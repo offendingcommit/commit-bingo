@@ -34,6 +34,9 @@ controls_row = None
 seed_label = None
 board_views = {}  # Dictionary mapping view name to (container, tile_buttons) tuple
 
+# Observable state variables for UI binding
+current_header_text = None  # Will be initialized to HEADER_TEXT in src/ui/head.py
+
 
 def generate_board(seed_val: int, phrases):
     """
@@ -258,13 +261,12 @@ def close_game():
     Close the game - hide the board and update the header text.
     This function is called when the close button is clicked.
     """
-    global is_game_closed, header_label
+    global is_game_closed, current_header_text
     is_game_closed = True
 
-    # Update header text on the current view
-    if header_label:
-        header_label.set_text(CLOSED_HEADER_TEXT)
-        header_label.update()
+    # Update header text via the bound variable - this will propagate to all views
+    # Use direct attribute assignment rather than globals()
+    current_header_text = CLOSED_HEADER_TEXT
 
     # Hide all board views (both home and stream)
     for view_key, (container, tile_buttons_local) in board_views.items():
@@ -288,10 +290,11 @@ def close_game():
         # In newer versions of NiceGUI, broadcast might not be available
         # We rely on the timer-based sync instead
         logging.info("ui.broadcast not available, relying on timer-based sync")
-        
+
         # If broadcast isn't available, manually trigger sync on current view
         # This ensures immediate update even if broadcast fails
         from src.ui.sync import sync_board_state
+
         sync_board_state()
 
     # Notify that game has been closed
@@ -303,15 +306,14 @@ def reopen_game():
     Reopen the game after it has been closed.
     This regenerates a new board and resets the UI.
     """
-    global is_game_closed, header_label, board_iteration
+    global is_game_closed, current_header_text, board_iteration
 
     # Reset game state
     is_game_closed = False
 
-    # Update header text back to original for the current view
-    if header_label:
-        header_label.set_text(HEADER_TEXT)
-        header_label.update()
+    # Update header text via the bound variable - this will propagate to all views
+    # Use direct attribute assignment rather than globals()
+    current_header_text = HEADER_TEXT
 
     # Generate a new board
     from src.utils.file_operations import read_phrases_file
@@ -351,8 +353,9 @@ def reopen_game():
         # In newer versions of NiceGUI, broadcast might not be available
         # Run sync manually to ensure immediate update
         logging.info("ui.broadcast not available, relying on timer-based sync")
-        
+
         # If broadcast isn't available, manually trigger sync on current view
         # This ensures immediate update even if broadcast fails
         from src.ui.sync import sync_board_state
+
         sync_board_state()

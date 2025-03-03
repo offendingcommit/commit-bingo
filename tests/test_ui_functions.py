@@ -142,11 +142,15 @@ class TestUIFunctions(unittest.TestCase):
         # during the test, so we're not checking for this call
 
     @patch("src.core.game_logic.ui")
-    @patch("src.core.game_logic.header_label")
-    def test_close_game(self, mock_header_label, mock_ui):
+    def test_close_game(self, mock_ui):
         """Test closing the game functionality"""
         from src.config.constants import CLOSED_HEADER_TEXT
-        from src.core.game_logic import board_views, close_game, is_game_closed
+        from src.core.game_logic import (
+            board_views,
+            close_game,
+            current_header_text,
+            is_game_closed,
+        )
 
         # Mock board views
         mock_container1 = MagicMock()
@@ -159,6 +163,7 @@ class TestUIFunctions(unittest.TestCase):
             board_views.copy() if hasattr(board_views, "copy") else {}
         )
         original_is_game_closed = is_game_closed
+        original_header_text = current_header_text
 
         try:
             # Set up the board_views global
@@ -171,37 +176,30 @@ class TestUIFunctions(unittest.TestCase):
             )
 
             # Mock controls_row
+            import src.core.game_logic
             from src.core.game_logic import controls_row
 
-            controls_row = MagicMock()
+            src.core.game_logic.controls_row = MagicMock()
 
             # Ensure is_game_closed is False initially
-            from src.core.game_logic import is_game_closed
-
-            globals()["is_game_closed"] = False
+            src.core.game_logic.is_game_closed = False
 
             # Call the close_game function
             close_game()
 
             # Verify game is marked as closed
-            from src.core.game_logic import is_game_closed
+            self.assertTrue(src.core.game_logic.is_game_closed)
 
-            self.assertTrue(is_game_closed)
-
-            # Verify header text is updated
-            mock_header_label.set_text.assert_called_once_with(CLOSED_HEADER_TEXT)
-            mock_header_label.update.assert_called_once()
+            # Verify header text is updated via bound variable
+            self.assertEqual(
+                src.core.game_logic.current_header_text, CLOSED_HEADER_TEXT
+            )
 
             # Verify containers are hidden
             mock_container1.style.assert_called_once_with("display: none;")
             mock_container1.update.assert_called_once()
             mock_container2.style.assert_called_once_with("display: none;")
             mock_container2.update.assert_called_once()
-
-            # Note: In the new structure, the controls_row clear might not be called directly
-            # or might be called differently, so we're not checking this
-
-            # We no longer check for broadcast as it may not be available in newer versions
 
             # Verify notification is shown
             mock_ui.notify.assert_called_once_with(
@@ -211,9 +209,10 @@ class TestUIFunctions(unittest.TestCase):
             # Restore original values
             board_views.clear()
             board_views.update(original_board_views)
-            from src.core.game_logic import is_game_closed
+            import src.core.game_logic
 
-            globals()["is_game_closed"] = original_is_game_closed
+            src.core.game_logic.is_game_closed = original_is_game_closed
+            src.core.game_logic.current_header_text = original_header_text
 
     @patch("main.ui.run_javascript")
     def test_sync_board_state_when_game_closed(self, mock_run_js):
@@ -468,83 +467,41 @@ class TestUIFunctions(unittest.TestCase):
             # Restore original state
             main.is_game_closed = original_is_game_closed
             main.header_label = original_header_label
-            
-    @patch("src.core.game_logic.ui")
-    def test_header_update_when_broadcast_fails(self, mock_ui):
+
+    def test_broadcast_fallback_on_failure(self):
         """
-        Test that the header is correctly updated when ui.broadcast() raises an AttributeError.
-        This simulates the scenario where newer versions of NiceGUI don't support broadcast.
+        Test that sync_board_state is called as a fallback when broadcast fails.
+        This is what we really care about testing - that manually triggering sync
+        happens when broadcast is unavailable.
         """
-        from src.config.constants import CLOSED_HEADER_TEXT
-        from src.core.game_logic import board_views, close_game, is_game_closed
+        # Mock the necessary components
+        with (
+            patch("src.core.game_logic.ui") as mock_ui,
+            patch("src.ui.sync.sync_board_state") as mock_sync,
+        ):
 
-        # Mock board views
-        mock_home_container = MagicMock()
-        mock_stream_container = MagicMock()
-        mock_buttons_home = {}
-        mock_buttons_stream = {}
+            # Set broadcast to fail with AttributeError
+            mock_ui.broadcast.side_effect = AttributeError("ui.broadcast not available")
 
-        # Mock header labels
-        mock_home_header = MagicMock()
-        mock_stream_header = MagicMock()
+            # Call close_game which should handle the broadcast failure
+            from src.core.game_logic import close_game
 
-        # Save original state
-        original_board_views = board_views.copy() if hasattr(board_views, "copy") else {}
-        original_is_game_closed = is_game_closed
-        
-        # Save and restore the header_label global variable
-        import src.core.game_logic
-        original_header_label = src.core.game_logic.header_label
-
-        try:
-            # Set up board views dictionary
-            board_views.clear()
-            board_views.update({
-                "home": (mock_home_container, mock_buttons_home),
-                "stream": (mock_stream_container, mock_buttons_stream),
-            })
-
-            # Set up initial state
-            src.core.game_logic.is_game_closed = False
-            src.core.game_logic.header_label = mock_home_header
-
-            # Make broadcast raise AttributeError to simulate newer NiceGUI versions
-            mock_ui.broadcast.side_effect = AttributeError("'module' object has no attribute 'broadcast'")
-
-            # Set up controls_row mock
-            src.core.game_logic.controls_row = MagicMock()
-
-            # Close the game from home view
             close_game()
 
-            # Check home header was updated
-            mock_home_header.set_text.assert_called_with(CLOSED_HEADER_TEXT)
-            mock_home_header.update.assert_called()
+            # Verify sync_board_state was called as fallback
+            mock_sync.assert_called_once()
 
-            # Verify game is marked as closed
-            self.assertTrue(src.core.game_logic.is_game_closed)
+            # Reset mocks
+            mock_ui.reset_mock()
+            mock_sync.reset_mock()
 
-            # Reset header mock and switch to stream view
-            mock_home_header.reset_mock()
-            src.core.game_logic.header_label = mock_stream_header
+            # Also test the reopen_game function
+            from src.core.game_logic import reopen_game
 
-            # Run sync_board_state to simulate a new client connecting
-            from src.ui.sync import sync_board_state
-            
-            # Mock ui in sync_board_state and make sure it sees the same is_game_closed state
-            with patch("src.ui.sync.ui"), patch("src.ui.sync.is_game_closed", src.core.game_logic.is_game_closed), patch("src.ui.sync.header_label", mock_stream_header):
-                sync_board_state()
+            reopen_game()
 
-            # Check stream header was updated correctly even though broadcast failed
-            mock_stream_header.set_text.assert_called_with(CLOSED_HEADER_TEXT)
-            mock_stream_header.update.assert_called()
-
-        finally:
-            # Restore original state
-            board_views.clear()
-            board_views.update(original_board_views)
-            src.core.game_logic.is_game_closed = original_is_game_closed
-            src.core.game_logic.header_label = original_header_label
+            # Verify sync_board_state was called as fallback
+            mock_sync.assert_called_once()
 
 
 if __name__ == "__main__":

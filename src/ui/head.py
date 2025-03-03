@@ -126,10 +126,18 @@ def setup_head(background_color: str):
     </script>"""
     )
 
+    # Initialize the observable header text state
+    from src.core.game_logic import current_header_text
+
+    # Set initial header text value
+    if current_header_text is None:
+        globals()["current_header_text"] = HEADER_TEXT
+
     # Create header with full width
     with ui.element("div").classes("w-full"):
         ui_header_label = (
-            ui.label(f"{HEADER_TEXT}")
+            ui.label()
+            .bind_text_from(current_header_text, lambda text: text)
             .classes("fit-header text-center")
             .style(f"font-family: {HEADER_FONT_FAMILY}; color: {HEADER_TEXT_COLOR};")
         )
