@@ -5,6 +5,7 @@ Core game logic for the Bingo application.
 import datetime
 import logging
 import random
+from typing import List, Optional, Set, cast
 
 from nicegui import ui
 
@@ -18,27 +19,46 @@ from src.config.constants import (
     TILE_UNCLICKED_BG_COLOR,
     TILE_UNCLICKED_TEXT_COLOR,
 )
+from src.types.ui_types import (
+    BingoPattern,
+    BingoPatterns,
+    BoardType,
+    BoardViews,
+    ClickedTiles,
+    Coordinate,
+    TileLabelInfo,
+    TileButtonsDict,
+)
 from src.utils.text_processing import get_line_style_for_lines, split_phrase_into_lines
 
 # Global variables for game state
-board = []  # 2D array of phrases
-clicked_tiles = set()  # Set of (row, col) tuples that are clicked
-bingo_patterns = set()  # Set of winning patterns found
-board_iteration = 1
-is_game_closed = False
-today_seed = None
+board: BoardType = []  # 2D array of phrases
+clicked_tiles: ClickedTiles = set()  # Set of (row, col) tuples that are clicked
+bingo_patterns: BingoPatterns = set()  # Set of winning patterns found
+board_iteration: int = 1
+is_game_closed: bool = False
+today_seed: Optional[str] = None
 
 # Global variables for UI references (initialized in the UI module)
-header_label = None
-controls_row = None
-seed_label = None
-board_views = {}  # Dictionary mapping view name to (container, tile_buttons) tuple
+header_label: Optional[ui.label] = None
+controls_row: Optional[ui.row] = None
+seed_label: Optional[ui.label] = None
+board_views: BoardViews = (
+    {}
+)  # Dictionary mapping view name to (container, tile_buttons) tuple
 
 
-def generate_board(seed_val: int, phrases):
+def generate_board(seed_val: int, phrases: List[str]) -> BoardType:
     """
     Generate a new board using the provided seed value.
     Also resets the clicked_tiles (ensuring the FREE SPACE is clicked) and sets the global today_seed.
+
+    Args:
+        seed_val: Integer used to seed the random generator
+        phrases: List of phrases to use in the board
+
+    Returns:
+        The generated board as a 2D array of phrases
     """
     global board, today_seed, clicked_tiles
 
@@ -61,10 +81,14 @@ def generate_board(seed_val: int, phrases):
     return board
 
 
-def toggle_tile(row, col):
+def toggle_tile(row: int, col: int) -> None:
     """
     Toggle the state of a tile (clicked/unclicked).
     Updates the UI and checks for winner.
+
+    Args:
+        row: Row index of the tile to toggle
+        col: Column index of the tile to toggle
     """
     global clicked_tiles
 
@@ -72,7 +96,7 @@ def toggle_tile(row, col):
     if (row, col) == (2, 2):
         return
 
-    key = (row, col)
+    key: Coordinate = (row, col)
     if key in clicked_tiles:
         clicked_tiles.remove(key)
     else:
@@ -90,18 +114,22 @@ def toggle_tile(row, col):
                 new_card_style = f"background-color: {TILE_UNCLICKED_BG_COLOR}; color: {TILE_UNCLICKED_TEXT_COLOR}; border: none;"
                 new_label_color = TILE_UNCLICKED_TEXT_COLOR
 
-            tile["card"].style(new_card_style)
+            card = cast(ui.card, tile["card"])
+            card.style(new_card_style)
+
             lines = split_phrase_into_lines(phrase)
             line_count = len(lines)
             new_label_style = get_line_style_for_lines(line_count, new_label_color)
 
-            for label_info in tile["labels"]:
-                lbl = label_info["ref"]
-                lbl.classes(label_info["base_classes"])
+            label_list = cast(List[TileLabelInfo], tile["labels"])
+            for label_info in label_list:
+                lbl = cast(ui.label, label_info["ref"])
+                base_classes = cast(str, label_info["base_classes"])
+                lbl.classes(base_classes)
                 lbl.style(new_label_style)
                 lbl.update()
 
-            tile["card"].update()
+            card.update()
 
         container.update()
 
@@ -119,12 +147,12 @@ def toggle_tile(row, col):
         logging.debug(f"JavaScript execution failed: {e}")
 
 
-def check_winner():
+def check_winner() -> None:
     """
     Check for Bingo win condition and update the UI accordingly.
     """
     global bingo_patterns
-    new_patterns = []
+    new_patterns: List[BingoPattern] = []
 
     # Check rows and columns.
     for i in range(5):
@@ -158,7 +186,9 @@ def check_winner():
             new_patterns.append("four_corners")
 
     # Plus shape: complete center row and center column.
-    plus_cells = {(2, c) for c in range(5)} | {(r, 2) for r in range(5)}
+    plus_cells: Set[Coordinate] = {(2, c) for c in range(5)} | {
+        (r, 2) for r in range(5)
+    }
     if all(cell in clicked_tiles for cell in plus_cells):
         if "plus" not in bingo_patterns:
             new_patterns.append("plus")
@@ -171,7 +201,7 @@ def check_winner():
             new_patterns.append("x_shape")
 
     # Outside edges (perimeter): all border cells clicked.
-    perimeter_cells = (
+    perimeter_cells: Set[Coordinate] = (
         {(0, c) for c in range(5)}
         | {(4, c) for c in range(5)}
         | {(r, 0) for r in range(5)}
@@ -183,15 +213,24 @@ def check_winner():
 
     if new_patterns:
         # Separate new win patterns into standard and special ones.
-        special_set = {"blackout", "four_corners", "plus", "x_shape", "perimeter"}
-        standard_new = [p for p in new_patterns if p not in special_set]
-        special_new = [p for p in new_patterns if p in special_set]
+        special_set: Set[str] = {
+            "blackout",
+            "four_corners",
+            "plus",
+            "x_shape",
+            "perimeter",
+        }
+        standard_new: List[BingoPattern] = [
+            p for p in new_patterns if p not in special_set
+        ]
+        special_new: List[BingoPattern] = [p for p in new_patterns if p in special_set]
 
         # Process standard win conditions (rows, columns, diagonals).
         if standard_new:
             for pattern in standard_new:
                 bingo_patterns.add(pattern)
-            standard_total = sum(1 for p in bingo_patterns if p not in special_set)
+            standard_total: int = sum(1 for p in bingo_patterns if p not in special_set)
+            message: str
             if standard_total == 1:
                 message = "BINGO!"
             elif standard_total == 2:
@@ -210,11 +249,11 @@ def check_winner():
         for sp in special_new:
             bingo_patterns.add(sp)
             # Format the name to title-case and append "Bingo!"
-            sp_message = sp.replace("_", " ").title() + " Bingo!"
+            sp_message: str = sp.replace("_", " ").title() + " Bingo!"
             ui.notify(sp_message, color="blue", duration=5)
 
 
-def reset_board():
+def reset_board() -> None:
     """
     Reset the board by clearing all clicked states, clearing winning patterns,
     and re-adding the FREE SPACE.
@@ -228,9 +267,12 @@ def reset_board():
                 clicked_tiles.add((r, c))
 
 
-def generate_new_board(phrases):
+def generate_new_board(phrases: List[str]) -> None:
     """
     Generate a new board with an incremented iteration seed and update all board views.
+
+    Args:
+        phrases: List of phrases to use for the board
     """
     global board_iteration
     board_iteration += 1
@@ -246,14 +288,14 @@ def generate_new_board(phrases):
         container.update()
 
     # Update the seed label if available
-    if "seed_label" in globals() and seed_label:
+    if seed_label is not None:
         seed_label.set_text(f"Seed: {today_seed}")
         seed_label.update()
 
     reset_board()
 
 
-def close_game():
+def close_game() -> None:
     """
     Close the game - show closed message instead of the board and update the header text.
     This function is called when the close button is clicked.
@@ -262,7 +304,7 @@ def close_game():
     is_game_closed = True
 
     # Update header text on the current view
-    if header_label:
+    if header_label is not None:
         header_label.set_text(CLOSED_HEADER_TEXT)
         header_label.update()
 
@@ -277,7 +319,7 @@ def close_game():
         container.update()
 
     # Modify the controls row to only show the New Board button
-    if controls_row:
+    if controls_row is not None:
         controls_row.clear()
         with controls_row:
             with ui.button("", icon="autorenew", on_click=reopen_game).classes(
@@ -298,7 +340,7 @@ def close_game():
     ui.notify("Game has been closed", color="red", duration=3)
 
 
-def reopen_game():
+def reopen_game() -> None:
     """
     Reopen the game after it has been closed.
     This regenerates a new board and resets the UI.
@@ -309,14 +351,14 @@ def reopen_game():
     is_game_closed = False
 
     # Update header text back to original for the current view
-    if header_label:
+    if header_label is not None:
         header_label.set_text(HEADER_TEXT)
         header_label.update()
 
     # Generate a new board
     from src.utils.file_operations import read_phrases_file
 
-    phrases = read_phrases_file()
+    phrases: List[str] = read_phrases_file()
 
     board_iteration += 1
     generate_board(board_iteration, phrases)
@@ -324,7 +366,7 @@ def reopen_game():
     # Rebuild the controls row with all buttons
     from src.ui.controls import rebuild_controls_row
 
-    if controls_row:
+    if controls_row is not None:
         rebuild_controls_row(controls_row)
 
     # Recreate and show all board views
