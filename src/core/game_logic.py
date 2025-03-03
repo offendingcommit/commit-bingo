@@ -26,8 +26,8 @@ from src.types.ui_types import (
     BoardViews,
     ClickedTiles,
     Coordinate,
-    TileLabelInfo,
     TileButtonsDict,
+    TileLabelInfo,
 )
 from src.utils.text_processing import get_line_style_for_lines, split_phrase_into_lines
 

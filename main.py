@@ -919,17 +919,19 @@ def generate_new_board():
 def build_closed_message(parent):
     """
     Build a message indicating the game is closed, to be displayed in place of the board.
-    
+
     Args:
         parent: The parent UI element to build the message in
     """
     with parent:
         with ui.element("div").classes(GRID_CONTAINER_CLASS):
-            with ui.element("div").classes("flex justify-center items-center h-full w-full"):
+            with ui.element("div").classes(
+                "flex justify-center items-center h-full w-full"
+            ):
                 ui.label("GAME CLOSED").classes("text-center fit-header").style(
                     f"font-family: {HEADER_FONT_FAMILY}; color: {FREE_SPACE_TEXT_COLOR}; font-size: 6rem;"
                 )
-    
+
     # Run JavaScript to ensure text is resized properly
     try:
         js_code = """

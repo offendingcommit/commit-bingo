@@ -218,7 +218,9 @@ class TestUIFunctions(unittest.TestCase):
 
     @patch("main.ui.run_javascript")
     @patch("main.build_closed_message")
-    def test_sync_board_state_when_game_closed(self, mock_build_closed_message, mock_run_js):
+    def test_sync_board_state_when_game_closed(
+        self, mock_build_closed_message, mock_run_js
+    ):
         """Test sync_board_state behavior when game is closed"""
         import main
 

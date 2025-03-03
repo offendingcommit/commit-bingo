@@ -25,7 +25,7 @@ from src.config.constants import (
     TILE_UNCLICKED_BG_COLOR,
     TILE_UNCLICKED_TEXT_COLOR,
 )
-from src.types.ui_types import BoardType, Coordinate, ClickedTiles, TileButtonsDict
+from src.types.ui_types import BoardType, ClickedTiles, Coordinate, TileButtonsDict
 from src.utils.text_processing import get_line_style_for_lines, split_phrase_into_lines
 
 
@@ -78,7 +78,7 @@ def build_board(
         on_tile_click: Callback function when a tile is clicked
         board: 2D array of phrases
         clicked_tiles: Set of (row, col) tuples that are clicked
-        
+
     Returns:
         The updated tile_buttons_dict with UI elements
     """
