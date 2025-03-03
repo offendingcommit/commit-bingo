@@ -255,7 +255,7 @@ def generate_new_board(phrases):
 
 def close_game():
     """
-    Close the game - hide the board and update the header text.
+    Close the game - show closed message instead of the board and update the header text.
     This function is called when the close button is clicked.
     """
     global is_game_closed, header_label
@@ -266,9 +266,14 @@ def close_game():
         header_label.set_text(CLOSED_HEADER_TEXT)
         header_label.update()
 
-    # Hide all board views (both home and stream)
+    # Show closed message in board containers
+    from src.config.constants import CLOSED_MESSAGE_COLOR, CLOSED_MESSAGE_TEXT
+    from src.ui.board_builder import build_closed_message
+
+    # Replace board with closed message in all views
     for view_key, (container, tile_buttons_local) in board_views.items():
-        container.style("display: none;")
+        container.clear()
+        build_closed_message(container)
         container.update()
 
     # Modify the controls row to only show the New Board button

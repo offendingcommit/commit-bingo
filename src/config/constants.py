@@ -6,6 +6,8 @@ Configuration constants for the Bingo application.
 HEADER_TEXT = "COMMIT !BINGO"
 HEADER_TEXT_COLOR = "#0CB2B3"
 CLOSED_HEADER_TEXT = "Bingo Is Closed"
+CLOSED_MESSAGE_TEXT = "GAME CLOSED"
+CLOSED_MESSAGE_COLOR = "#FF7f33"
 
 # Free space settings
 FREE_SPACE_TEXT = "FREE MEAT"
