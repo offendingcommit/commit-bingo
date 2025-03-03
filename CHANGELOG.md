@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v1.0.0 (2025-03-03)
+
+This is the first major release of the Bingo application, reflecting the maturity and stability of the codebase. Key milestones include:
+
+- Complete modular architecture implementation
+- Stable UI with game closure functionality
+- Comprehensive test coverage
+- Full CI/CD pipeline with semantic versioning
+- Docker containerization and Helm chart for Kubernetes deployment
+
+
 ## v0.1.0 (2025-03-03)
 
 ### Bug Fixes
