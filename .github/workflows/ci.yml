@@ -78,7 +78,35 @@ jobs:
       with:
         fetch-depth: 0
     
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        cache: 'pip'
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 1.8.3
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Install dependencies
+      run: poetry install
+    
     - name: Python Semantic Release
-      uses: python-semantic-release/python-semantic-release@master
+      id: semantic-release
+      uses: python-semantic-release/python-semantic-release@v9.1.1
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Publish release to GitHub
+      if: steps.semantic-release.outputs.released == 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "Released version ${{ steps.semantic-release.outputs.version }}"
+        gh release create v${{ steps.semantic-release.outputs.version }} \
+          --title "v${{ steps.semantic-release.outputs.version }}" \
+          --notes "${{ steps.semantic-release.outputs.release_notes }}" \
+          dist/*
