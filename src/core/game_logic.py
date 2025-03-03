@@ -288,6 +288,11 @@ def close_game():
         # In newer versions of NiceGUI, broadcast might not be available
         # We rely on the timer-based sync instead
         logging.info("ui.broadcast not available, relying on timer-based sync")
+        
+        # If broadcast isn't available, manually trigger sync on current view
+        # This ensures immediate update even if broadcast fails
+        from src.ui.sync import sync_board_state
+        sync_board_state()
 
     # Notify that game has been closed
     ui.notify("Game has been closed", color="red", duration=3)
@@ -344,5 +349,10 @@ def reopen_game():
         ui.broadcast()  # Broadcast changes to all connected clients
     except AttributeError:
         # In newer versions of NiceGUI, broadcast might not be available
-        # We rely on the timer-based sync instead
+        # Run sync manually to ensure immediate update
         logging.info("ui.broadcast not available, relying on timer-based sync")
+        
+        # If broadcast isn't available, manually trigger sync on current view
+        # This ensures immediate update even if broadcast fails
+        from src.ui.sync import sync_board_state
+        sync_board_state()

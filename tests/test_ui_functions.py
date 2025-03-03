@@ -468,6 +468,83 @@ class TestUIFunctions(unittest.TestCase):
             # Restore original state
             main.is_game_closed = original_is_game_closed
             main.header_label = original_header_label
+            
+    @patch("src.core.game_logic.ui")
+    def test_header_update_when_broadcast_fails(self, mock_ui):
+        """
+        Test that the header is correctly updated when ui.broadcast() raises an AttributeError.
+        This simulates the scenario where newer versions of NiceGUI don't support broadcast.
+        """
+        from src.config.constants import CLOSED_HEADER_TEXT
+        from src.core.game_logic import board_views, close_game, is_game_closed
+
+        # Mock board views
+        mock_home_container = MagicMock()
+        mock_stream_container = MagicMock()
+        mock_buttons_home = {}
+        mock_buttons_stream = {}
+
+        # Mock header labels
+        mock_home_header = MagicMock()
+        mock_stream_header = MagicMock()
+
+        # Save original state
+        original_board_views = board_views.copy() if hasattr(board_views, "copy") else {}
+        original_is_game_closed = is_game_closed
+        
+        # Save and restore the header_label global variable
+        import src.core.game_logic
+        original_header_label = src.core.game_logic.header_label
+
+        try:
+            # Set up board views dictionary
+            board_views.clear()
+            board_views.update({
+                "home": (mock_home_container, mock_buttons_home),
+                "stream": (mock_stream_container, mock_buttons_stream),
+            })
+
+            # Set up initial state
+            src.core.game_logic.is_game_closed = False
+            src.core.game_logic.header_label = mock_home_header
+
+            # Make broadcast raise AttributeError to simulate newer NiceGUI versions
+            mock_ui.broadcast.side_effect = AttributeError("'module' object has no attribute 'broadcast'")
+
+            # Set up controls_row mock
+            src.core.game_logic.controls_row = MagicMock()
+
+            # Close the game from home view
+            close_game()
+
+            # Check home header was updated
+            mock_home_header.set_text.assert_called_with(CLOSED_HEADER_TEXT)
+            mock_home_header.update.assert_called()
+
+            # Verify game is marked as closed
+            self.assertTrue(src.core.game_logic.is_game_closed)
+
+            # Reset header mock and switch to stream view
+            mock_home_header.reset_mock()
+            src.core.game_logic.header_label = mock_stream_header
+
+            # Run sync_board_state to simulate a new client connecting
+            from src.ui.sync import sync_board_state
+            
+            # Mock ui in sync_board_state and make sure it sees the same is_game_closed state
+            with patch("src.ui.sync.ui"), patch("src.ui.sync.is_game_closed", src.core.game_logic.is_game_closed), patch("src.ui.sync.header_label", mock_stream_header):
+                sync_board_state()
+
+            # Check stream header was updated correctly even though broadcast failed
+            mock_stream_header.set_text.assert_called_with(CLOSED_HEADER_TEXT)
+            mock_stream_header.update.assert_called()
+
+        finally:
+            # Restore original state
+            board_views.clear()
+            board_views.update(original_board_views)
+            src.core.game_logic.is_game_closed = original_is_game_closed
+            src.core.game_logic.header_label = original_header_label
 
 
 if __name__ == "__main__":
