@@ -268,28 +268,30 @@ class TestUIFunctions(unittest.TestCase):
         # This simple replacement test avoids circular import issues
         # The detailed behavior is already tested in test_close_game and test_stream_header_update_when_game_closed
         from src.core.game_logic import board_views
-        
+
         # Just ensure we can create board views correctly
         # Create a mock setup
         mock_home_container = MagicMock()
         mock_stream_container = MagicMock()
-        
+
         # Save original board_views
-        original_board_views = board_views.copy() if hasattr(board_views, 'copy') else {}
-        
+        original_board_views = (
+            board_views.copy() if hasattr(board_views, "copy") else {}
+        )
+
         try:
             # Reset board_views for the test
             board_views.clear()
-            
+
             # Set up mock views
             board_views["home"] = (mock_home_container, {})
             board_views["stream"] = (mock_stream_container, {})
-            
+
             # Test the basic expectation that we can set up two views
             self.assertEqual(len(board_views), 2)
             self.assertIn("home", board_views)
             self.assertIn("stream", board_views)
-            
+
         finally:
             # Restore original state
             board_views.clear()
