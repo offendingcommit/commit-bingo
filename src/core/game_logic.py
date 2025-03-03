@@ -272,7 +272,13 @@ def close_game():
                 ui.tooltip("Start New Game")
     
     # Update stream page as well - this will trigger sync_board_state on connected clients
-    ui.broadcast()  # Broadcast changes to all connected clients
+    # Note: ui.broadcast() was used in older versions of NiceGUI, but may not be available
+    try:
+        ui.broadcast()  # Broadcast changes to all connected clients
+    except AttributeError:
+        # In newer versions of NiceGUI, broadcast might not be available
+        # We rely on the timer-based sync instead
+        logging.info("ui.broadcast not available, relying on timer-based sync")
     
     # Notify that game has been closed
     ui.notify("Game has been closed", color="red", duration=3)
@@ -323,4 +329,9 @@ def reopen_game():
     
     # Update stream page and all other connected clients
     # This will trigger sync_board_state on all clients including the stream view
-    ui.broadcast()
+    try:
+        ui.broadcast()  # Broadcast changes to all connected clients
+    except AttributeError:
+        # In newer versions of NiceGUI, broadcast might not be available
+        # We rely on the timer-based sync instead
+        logging.info("ui.broadcast not available, relying on timer-based sync")
