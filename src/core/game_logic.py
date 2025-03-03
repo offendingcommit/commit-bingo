@@ -18,7 +18,7 @@ from src.config.constants import (
     TILE_UNCLICKED_BG_COLOR,
     TILE_UNCLICKED_TEXT_COLOR,
 )
-from src.utils.text_processing import split_phrase_into_lines, get_line_style_for_lines
+from src.utils.text_processing import get_line_style_for_lines, split_phrase_into_lines
 
 # Global variables for game state
 board = []  # 2D array of phrases
@@ -41,23 +41,23 @@ def generate_board(seed_val: int, phrases):
     Also resets the clicked_tiles (ensuring the FREE SPACE is clicked) and sets the global today_seed.
     """
     global board, today_seed, clicked_tiles
-    
+
     todays_seed = datetime.date.today().strftime("%Y%m%d")
     random.seed(seed_val)
-    
+
     shuffled_phrases = random.sample(phrases, 24)
     shuffled_phrases.insert(12, FREE_SPACE_TEXT)
-    
-    board = [shuffled_phrases[i:i+5] for i in range(0, 25, 5)]
-    
+
+    board = [shuffled_phrases[i : i + 5] for i in range(0, 25, 5)]
+
     clicked_tiles.clear()
     for r, row in enumerate(board):
         for c, phrase in enumerate(row):
             if phrase.upper() == FREE_SPACE_TEXT:
                 clicked_tiles.add((r, c))
-                
+
     today_seed = f"{todays_seed}.{seed_val}"
-    
+
     return board
 
 
@@ -67,19 +67,19 @@ def toggle_tile(row, col):
     Updates the UI and checks for winner.
     """
     global clicked_tiles
-    
+
     # Don't allow toggling the free space
     if (row, col) == (2, 2):
         return
-    
+
     key = (row, col)
     if key in clicked_tiles:
         clicked_tiles.remove(key)
     else:
         clicked_tiles.add(key)
-    
+
     check_winner()
-    
+
     for view_key, (container, tile_buttons_local) in board_views.items():
         for (r, c), tile in tile_buttons_local.items():
             phrase = board[r][c]
@@ -89,22 +89,22 @@ def toggle_tile(row, col):
             else:
                 new_card_style = f"background-color: {TILE_UNCLICKED_BG_COLOR}; color: {TILE_UNCLICKED_TEXT_COLOR}; border: none;"
                 new_label_color = TILE_UNCLICKED_TEXT_COLOR
-            
+
             tile["card"].style(new_card_style)
             lines = split_phrase_into_lines(phrase)
             line_count = len(lines)
             new_label_style = get_line_style_for_lines(line_count, new_label_color)
-            
+
             for label_info in tile["labels"]:
                 lbl = label_info["ref"]
                 lbl.classes(label_info["base_classes"])
                 lbl.style(new_label_style)
                 lbl.update()
-                
+
             tile["card"].update()
-        
+
         container.update()
-    
+
     try:
         js_code = """
             setTimeout(function() {
@@ -125,7 +125,7 @@ def check_winner():
     """
     global bingo_patterns
     new_patterns = []
-    
+
     # Check rows and columns.
     for i in range(5):
         if all((i, j) in clicked_tiles for j in range(5)):
@@ -141,7 +141,7 @@ def check_winner():
             new_patterns.append("diag_main")
 
     # Check anti-diagonal.
-    if all((i, 4-i) in clicked_tiles for i in range(5)):
+    if all((i, 4 - i) in clicked_tiles for i in range(5)):
         if "diag_anti" not in bingo_patterns:
             new_patterns.append("diag_anti")
 
@@ -153,7 +153,7 @@ def check_winner():
             new_patterns.append("blackout")
 
     # 4 Corners: top-left, top-right, bottom-left, bottom-right.
-    if all(pos in clicked_tiles for pos in [(0,0), (0,4), (4,0), (4,4)]):
+    if all(pos in clicked_tiles for pos in [(0, 0), (0, 4), (4, 0), (4, 4)]):
         if "four_corners" not in bingo_patterns:
             new_patterns.append("four_corners")
 
@@ -164,12 +164,19 @@ def check_winner():
             new_patterns.append("plus")
 
     # X shape: both diagonals complete.
-    if all((i, i) in clicked_tiles for i in range(5)) and all((i, 4-i) in clicked_tiles for i in range(5)):
+    if all((i, i) in clicked_tiles for i in range(5)) and all(
+        (i, 4 - i) in clicked_tiles for i in range(5)
+    ):
         if "x_shape" not in bingo_patterns:
             new_patterns.append("x_shape")
 
     # Outside edges (perimeter): all border cells clicked.
-    perimeter_cells = {(0, c) for c in range(5)} | {(4, c) for c in range(5)} | {(r, 0) for r in range(5)} | {(r, 4) for r in range(5)}
+    perimeter_cells = (
+        {(0, c) for c in range(5)}
+        | {(4, c) for c in range(5)}
+        | {(r, 0) for r in range(5)}
+        | {(r, 4) for r in range(5)}
+    )
     if all(cell in clicked_tiles for cell in perimeter_cells):
         if "perimeter" not in bingo_patterns:
             new_patterns.append("perimeter")
@@ -228,21 +235,21 @@ def generate_new_board(phrases):
     global board_iteration
     board_iteration += 1
     generate_board(board_iteration, phrases)
-    
+
     # Update all board views (both home and stream)
     from src.ui.board_builder import build_board
-    
+
     for view_key, (container, tile_buttons_local) in board_views.items():
         container.clear()
         tile_buttons_local.clear()
         build_board(container, tile_buttons_local, toggle_tile, board, clicked_tiles)
         container.update()
-        
+
     # Update the seed label if available
-    if 'seed_label' in globals() and seed_label:
+    if "seed_label" in globals() and seed_label:
         seed_label.set_text(f"Seed: {today_seed}")
         seed_label.update()
-        
+
     reset_board()
 
 
@@ -253,24 +260,26 @@ def close_game():
     """
     global is_game_closed, header_label
     is_game_closed = True
-    
+
     # Update header text on the current view
     if header_label:
         header_label.set_text(CLOSED_HEADER_TEXT)
         header_label.update()
-    
+
     # Hide all board views (both home and stream)
     for view_key, (container, tile_buttons_local) in board_views.items():
         container.style("display: none;")
         container.update()
-    
+
     # Modify the controls row to only show the New Board button
     if controls_row:
         controls_row.clear()
         with controls_row:
-            with ui.button("", icon="autorenew", on_click=reopen_game).classes("rounded-full w-12 h-12") as new_game_btn:
+            with ui.button("", icon="autorenew", on_click=reopen_game).classes(
+                "rounded-full w-12 h-12"
+            ) as new_game_btn:
                 ui.tooltip("Start New Game")
-    
+
     # Update stream page as well - this will trigger sync_board_state on connected clients
     # Note: ui.broadcast() was used in older versions of NiceGUI, but may not be available
     try:
@@ -279,7 +288,7 @@ def close_game():
         # In newer versions of NiceGUI, broadcast might not be available
         # We rely on the timer-based sync instead
         logging.info("ui.broadcast not available, relying on timer-based sync")
-    
+
     # Notify that game has been closed
     ui.notify("Game has been closed", color="red", duration=3)
 
@@ -290,43 +299,45 @@ def reopen_game():
     This regenerates a new board and resets the UI.
     """
     global is_game_closed, header_label, board_iteration
-    
+
     # Reset game state
     is_game_closed = False
-    
+
     # Update header text back to original for the current view
     if header_label:
         header_label.set_text(HEADER_TEXT)
         header_label.update()
-    
+
     # Generate a new board
     from src.utils.file_operations import read_phrases_file
+
     phrases = read_phrases_file()
-    
+
     board_iteration += 1
     generate_board(board_iteration, phrases)
-    
+
     # Rebuild the controls row with all buttons
     from src.ui.controls import rebuild_controls_row
+
     if controls_row:
         rebuild_controls_row(controls_row)
-    
+
     # Recreate and show all board views
     from src.ui.board_builder import build_board
-    
+
     for view_key, (container, tile_buttons_local) in board_views.items():
         container.style("display: block;")
         container.clear()
         tile_buttons_local.clear()
         build_board(container, tile_buttons_local, toggle_tile, board, clicked_tiles)
         container.update()
-    
+
     # Reset clicked tiles except for FREE SPACE
     reset_board()
-    
+
     # Notify that a new game has started
     ui.notify("New game started", color="green", duration=3)
-    
+
     # Update stream page and all other connected clients
     # This will trigger sync_board_state on all clients including the stream view
     try:

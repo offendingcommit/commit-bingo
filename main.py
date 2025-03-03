@@ -2,10 +2,11 @@
 # New development should use the modular structure in src/ with app.py as the entry point
 
 import warnings
+
 warnings.warn(
     "main.py is deprecated. Use the modular structure in src/ with app.py as the entry point",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 import asyncio

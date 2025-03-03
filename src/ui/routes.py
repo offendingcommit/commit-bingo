@@ -3,12 +3,10 @@ Routes module for the Bingo application.
 """
 
 import logging
+
 from nicegui import ui
 
-from src.config.constants import (
-    HOME_BG_COLOR,
-    STREAM_BG_COLOR
-)
+from src.config.constants import HOME_BG_COLOR, STREAM_BG_COLOR
 from src.ui.board_builder import create_board_view
 from src.ui.sync import sync_board_state
 

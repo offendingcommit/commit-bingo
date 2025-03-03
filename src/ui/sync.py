@@ -3,21 +3,12 @@ UI synchronization module for the Bingo application.
 """
 
 import logging
+
 from nicegui import ui
 
-from src.config.constants import (
-    CLOSED_HEADER_TEXT,
-    HEADER_TEXT
-)
-from src.core.game_logic import (
-    board_views,
-    is_game_closed,
-    header_label
-)
-from src.utils.text_processing import (
-    split_phrase_into_lines,
-    get_line_style_for_lines
-)
+from src.config.constants import CLOSED_HEADER_TEXT, HEADER_TEXT
+from src.core.game_logic import board_views, header_label, is_game_closed
+from src.utils.text_processing import get_line_style_for_lines, split_phrase_into_lines
 
 
 def sync_board_state():
@@ -32,35 +23,41 @@ def sync_board_state():
             if header_label:
                 header_label.set_text(CLOSED_HEADER_TEXT)
                 header_label.update()
-            
+
             # Hide all board views
             for view_key, (container, _) in board_views.items():
                 container.style("display: none;")
                 container.update()
-            
+
             # Make sure controls row is showing only the Start New Game button
             from src.core.game_logic import controls_row, reopen_game
+
             if controls_row:
-                
+
                 # Check if controls row has been already updated
-                if controls_row.default_slot and len(controls_row.default_slot.children) != 1:
+                if (
+                    controls_row.default_slot
+                    and len(controls_row.default_slot.children) != 1
+                ):
                     controls_row.clear()
                     with controls_row:
-                        with ui.button("", icon="autorenew", on_click=reopen_game).classes("rounded-full w-12 h-12") as new_game_btn:
+                        with ui.button(
+                            "", icon="autorenew", on_click=reopen_game
+                        ).classes("rounded-full w-12 h-12") as new_game_btn:
                             ui.tooltip("Start New Game")
-            
+
             return
         else:
             # Ensure header text is correct when game is open
             if header_label and header_label.text != HEADER_TEXT:
                 header_label.set_text(HEADER_TEXT)
                 header_label.update()
-        
+
         # Normal update if game is not closed
         # Update tile styles in every board view (e.g., home and stream)
         for view_key, (container, tile_buttons_local) in board_views.items():
             update_tile_styles(tile_buttons_local)
-        
+
         # Safely run JavaScript to resize text
         try:
             # Add a slight delay to ensure DOM updates have propagated
@@ -74,7 +71,9 @@ def sync_board_state():
             """
             ui.run_javascript(js_code)
         except Exception as e:
-            logging.debug(f"JavaScript execution failed (likely disconnected client): {e}")
+            logging.debug(
+                f"JavaScript execution failed (likely disconnected client): {e}"
+            )
     except Exception as e:
         logging.debug(f"Error in sync_board_state: {e}")
 
@@ -85,13 +84,13 @@ def update_tile_styles(tile_buttons_dict: dict):
     """
     from src.config.constants import (
         FREE_SPACE_TEXT,
-        TILE_CLICKED_BG_COLOR, 
+        TILE_CLICKED_BG_COLOR,
         TILE_CLICKED_TEXT_COLOR,
         TILE_UNCLICKED_BG_COLOR,
-        TILE_UNCLICKED_TEXT_COLOR
+        TILE_UNCLICKED_TEXT_COLOR,
     )
     from src.core.game_logic import board, clicked_tiles
-    
+
     for (r, c), tile in tile_buttons_dict.items():
         # tile is a dict with keys "card" and "labels"
         phrase = board[r][c]

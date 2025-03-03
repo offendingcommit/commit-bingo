@@ -11,11 +11,12 @@ sys.modules["nicegui"] = MagicMock()
 sys.modules["nicegui.ui"] = MagicMock()
 sys.modules["fastapi.staticfiles"] = MagicMock()
 
-# Import functions from the new modular structure
-from src.utils.text_processing import get_line_style_for_lines, get_google_font_css
-from src.ui.sync import update_tile_styles, sync_board_state
 from src.core.game_logic import close_game, reopen_game
 from src.ui.board_builder import create_board_view
+from src.ui.sync import sync_board_state, update_tile_styles
+
+# Import functions from the new modular structure
+from src.utils.text_processing import get_google_font_css, get_line_style_for_lines
 
 
 class TestUIFunctions(unittest.TestCase):
@@ -31,8 +32,13 @@ class TestUIFunctions(unittest.TestCase):
             patch("src.config.constants.TILE_UNCLICKED_TEXT_COLOR", "#100079"),
             patch("src.config.constants.FREE_SPACE_TEXT", "FREE SPACE"),
             patch("src.config.constants.FREE_SPACE_TEXT_COLOR", "#FF7f33"),
-            patch("src.core.game_logic.board", [["PHRASE1", "PHRASE2"], ["PHRASE3", "FREE SPACE"]]),
-            patch("src.core.game_logic.clicked_tiles", {(1, 1)}),  # FREE SPACE is clicked
+            patch(
+                "src.core.game_logic.board",
+                [["PHRASE1", "PHRASE2"], ["PHRASE3", "FREE SPACE"]],
+            ),
+            patch(
+                "src.core.game_logic.clicked_tiles", {(1, 1)}
+            ),  # FREE SPACE is clicked
         ]
 
         for p in self.patches:
@@ -87,10 +93,7 @@ class TestUIFunctions(unittest.TestCase):
     @patch("src.ui.sync.ui.run_javascript")
     def test_update_tile_styles(self, mock_run_js):
         """Test updating tile styles based on clicked state"""
-        from src.config.constants import (
-            TILE_CLICKED_BG_COLOR,
-            TILE_UNCLICKED_BG_COLOR
-        )
+        from src.config.constants import TILE_CLICKED_BG_COLOR, TILE_UNCLICKED_BG_COLOR
         from src.core.game_logic import clicked_tiles
 
         # Create mock tiles
@@ -129,9 +132,7 @@ class TestUIFunctions(unittest.TestCase):
 
             # Check that clicked tiles have the clicked style
             if (r, c) in clicked_tiles:
-                self.assertIn(
-                    TILE_CLICKED_BG_COLOR, tile["card"].style.call_args[0][0]
-                )
+                self.assertIn(TILE_CLICKED_BG_COLOR, tile["card"].style.call_args[0][0])
             else:
                 self.assertIn(
                     TILE_UNCLICKED_BG_COLOR, tile["card"].style.call_args[0][0]
@@ -144,8 +145,8 @@ class TestUIFunctions(unittest.TestCase):
     @patch("src.core.game_logic.header_label")
     def test_close_game(self, mock_header_label, mock_ui):
         """Test closing the game functionality"""
-        from src.core.game_logic import close_game, is_game_closed, board_views
         from src.config.constants import CLOSED_HEADER_TEXT
+        from src.core.game_logic import board_views, close_game, is_game_closed
 
         # Mock board views
         mock_container1 = MagicMock()
@@ -154,30 +155,37 @@ class TestUIFunctions(unittest.TestCase):
         mock_buttons2 = {}
 
         # Save original board_views to restore later
-        original_board_views = board_views.copy() if hasattr(board_views, 'copy') else {}
+        original_board_views = (
+            board_views.copy() if hasattr(board_views, "copy") else {}
+        )
         original_is_game_closed = is_game_closed
-        
+
         try:
             # Set up the board_views global
             board_views.clear()
-            board_views.update({
-                "home": (mock_container1, mock_buttons1),
-                "stream": (mock_container2, mock_buttons2),
-            })
+            board_views.update(
+                {
+                    "home": (mock_container1, mock_buttons1),
+                    "stream": (mock_container2, mock_buttons2),
+                }
+            )
 
             # Mock controls_row
             from src.core.game_logic import controls_row
+
             controls_row = MagicMock()
 
             # Ensure is_game_closed is False initially
             from src.core.game_logic import is_game_closed
-            globals()['is_game_closed'] = False
+
+            globals()["is_game_closed"] = False
 
             # Call the close_game function
             close_game()
 
             # Verify game is marked as closed
             from src.core.game_logic import is_game_closed
+
             self.assertTrue(is_game_closed)
 
             # Verify header text is updated
@@ -204,7 +212,8 @@ class TestUIFunctions(unittest.TestCase):
             board_views.clear()
             board_views.update(original_board_views)
             from src.core.game_logic import is_game_closed
-            globals()['is_game_closed'] = original_is_game_closed
+
+            globals()["is_game_closed"] = original_is_game_closed
 
     @patch("main.ui.run_javascript")
     def test_sync_board_state_when_game_closed(self, mock_run_js):

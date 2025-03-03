@@ -5,8 +5,9 @@ Text processing utilities for the Bingo application.
 from src.config.constants import (
     BOARD_TILE_FONT,
     BOARD_TILE_FONT_STYLE,
-    BOARD_TILE_FONT_WEIGHT
+    BOARD_TILE_FONT_WEIGHT,
 )
+
 
 def split_phrase_into_lines(phrase: str, forced_lines: int = None) -> list:
     """
@@ -30,7 +31,7 @@ def split_phrase_into_lines(phrase: str, forced_lines: int = None) -> list:
     candidates = []  # list of tuples: (number_of_lines, diff, candidate)
 
     # 2-line candidate
-    best_diff_2 = float('inf')
+    best_diff_2 = float("inf")
     best_seg_2 = None
     for i in range(1, n):
         seg1 = words[:i]
@@ -43,13 +44,13 @@ def split_phrase_into_lines(phrase: str, forced_lines: int = None) -> list:
             best_seg_2 = [" ".join(seg1), " ".join(seg2)]
     if best_seg_2 is not None:
         candidates.append((2, best_diff_2, best_seg_2))
-            
+
     # 3-line candidate (if at least 4 words)
     if n >= 4:
-        best_diff_3 = float('inf')
+        best_diff_3 = float("inf")
         best_seg_3 = None
-        for i in range(1, n-1):
-            for j in range(i+1, n):
+        for i in range(1, n - 1):
+            for j in range(i + 1, n):
                 seg1 = words[:i]
                 seg2 = words[i:j]
                 seg3 = words[j:]
@@ -65,11 +66,11 @@ def split_phrase_into_lines(phrase: str, forced_lines: int = None) -> list:
 
     # 4-line candidate (if at least 5 words)
     if n >= 5:
-        best_diff_4 = float('inf')
+        best_diff_4 = float("inf")
         best_seg_4 = None
-        for i in range(1, n-2):
-            for j in range(i+1, n-1):
-                for k in range(j+1, n):
+        for i in range(1, n - 2):
+            for j in range(i + 1, n - 1):
+                for k in range(j + 1, n):
                     seg1 = words[:i]
                     seg2 = words[i:j]
                     seg3 = words[j:k]
@@ -81,7 +82,12 @@ def split_phrase_into_lines(phrase: str, forced_lines: int = None) -> list:
                     diff = max(len1, len2, len3, len4) - min(len1, len2, len3, len4)
                     if diff < best_diff_4:
                         best_diff_4 = diff
-                        best_seg_4 = [" ".join(seg1), " ".join(seg2), " ".join(seg3), " ".join(seg4)]
+                        best_seg_4 = [
+                            " ".join(seg1),
+                            " ".join(seg2),
+                            " ".join(seg3),
+                            " ".join(seg4),
+                        ]
         if best_seg_4 is not None:
             candidates.append((4, best_diff_4, best_seg_4))
 
@@ -112,13 +118,15 @@ def get_line_style_for_lines(line_count: int, default_text_color: str) -> str:
     elif line_count == 2:
         lh = "1.2em"  # Slightly reduced spacing for two lines.
     elif line_count == 3:
-        lh = "0.9em"    # Even tighter spacing for three lines.
+        lh = "0.9em"  # Even tighter spacing for three lines.
     else:
         lh = "0.7em"  # For four or more lines.
     return f"font-family: '{BOARD_TILE_FONT}', sans-serif; font-weight: {BOARD_TILE_FONT_WEIGHT}; font-style: {BOARD_TILE_FONT_STYLE}; padding: 0; margin: 0; color: {default_text_color}; line-height: {lh};"
 
 
-def get_google_font_css(font_name: str, weight: str, style: str, uniquifier: str) -> str:
+def get_google_font_css(
+    font_name: str, weight: str, style: str, uniquifier: str
+) -> str:
     """
     Returns a CSS style block defining a class for the specified Google font.
     'uniquifier' is used as the CSS class name.

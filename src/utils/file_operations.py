@@ -8,6 +8,7 @@ import os
 # Global variable to track phrases.txt modification time.
 last_phrases_mtime = os.path.getmtime("phrases.txt")
 
+
 def has_too_many_repeats(phrase, threshold=0.5):
     """
     Returns True if too many of the words in the phrase repeat.
@@ -20,9 +21,12 @@ def has_too_many_repeats(phrase, threshold=0.5):
     unique_count = len(set(words))
     ratio = unique_count / len(words)
     if ratio < threshold:
-        logging.debug(f"Discarding phrase '{phrase}' due to repeats: {unique_count}/{len(words)} = {ratio:.2f} < {threshold}")
+        logging.debug(
+            f"Discarding phrase '{phrase}' due to repeats: {unique_count}/{len(words)} = {ratio:.2f} < {threshold}"
+        )
         return True
     return False
+
 
 def read_phrases_file():
     """
