@@ -3,6 +3,11 @@ name: CI
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'LICENSE'
+      - 'docs/**'
   pull_request:
     branches: [ main ]
 
@@ -63,58 +68,3 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
-
-  release:
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    concurrency: release
-    permissions:
-      id-token: write
-      contents: write
-      issues: write
-      pull-requests: write
-
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        token: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
-        cache: 'pip'
-    
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: 1.8.3
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-    
-    - name: Install dependencies
-      run: poetry install
-    
-    - name: Python Semantic Release
-      id: semantic-release
-      run: |
-        git config --global user.name "semantic-release"
-        git config --global user.email "semantic-release@users.noreply.github.com"
-        # Debug information
-        echo "Current git status:"
-        git status
-        echo "Current branch:"
-        git branch
-        # Run semantic release with verbose output
-        poetry run semantic-release --verbose version
-        # Only publish if version command succeeded
-        if [ $? -eq 0 ]; then
-          poetry run semantic-release --verbose publish
-        else
-          echo "Version command failed, skipping publish"
-          exit 1
-        fi
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

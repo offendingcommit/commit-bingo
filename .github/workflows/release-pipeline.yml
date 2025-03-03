@@ -1,0 +1,215 @@
+name: Release Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 1.8.3
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Cache Poetry dependencies
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+    
+    - name: Install dependencies
+      run: poetry install
+    
+    - name: Lint with flake8
+      run: |
+        poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=.venv,.git,__pycache__,build,dist
+        poetry run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics --exclude=.venv,.git,__pycache__,build,dist
+    
+    - name: Format check with black
+      run: poetry run black --check --exclude=\.venv --extend-exclude=main.py .
+    
+    - name: Import sorting check with isort
+      run: poetry run isort --check --skip .venv --skip main.py .
+    
+    - name: Test with pytest
+      run: |
+        if [ -d "src" ]; then
+          poetry run pytest --cov=src
+        else
+          echo "No src directory yet, skipping tests"
+          exit 0
+        fi
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+
+  semantic-release:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      new_release_published: ${{ steps.semantic-release.outputs.new_release_published }}
+      new_release_version: ${{ steps.semantic-release.outputs.new_release_version }}
+    permissions:
+      id-token: write
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        cache: 'pip'
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 1.8.3
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Install dependencies
+      run: poetry install
+    
+    - name: Python Semantic Release
+      id: semantic-release
+      run: |
+        git config --global user.name "semantic-release"
+        git config --global user.email "semantic-release@users.noreply.github.com"
+        # Debug information
+        echo "Current git status:"
+        git status
+        echo "Current branch:"
+        git branch
+        
+        # Run semantic release with verbose output
+        echo "Running semantic-release version"
+        VERSION_OUTPUT=$(poetry run semantic-release --verbose version)
+        echo "$VERSION_OUTPUT"
+        
+        # Extract version information
+        if echo "$VERSION_OUTPUT" | grep -q "Bumping version"; then
+          NEW_VERSION=$(poetry run python -c "import toml; print(toml.load('pyproject.toml')['tool']['poetry']['version'])")
+          echo "new_release_published=true" >> $GITHUB_OUTPUT
+          echo "new_release_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+          
+          # Publish the release
+          echo "Publishing release"
+          poetry run semantic-release --verbose publish
+        else
+          echo "No version bump needed"
+          echo "new_release_published=false" >> $GITHUB_OUTPUT
+        fi
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker-build:
+    needs: semantic-release
+    if: needs.semantic-release.outputs.new_release_published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main  # Make sure we get the latest changes after semantic-release
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ghcr.io/offendingcommit/bingo:latest
+            ghcr.io/offendingcommit/bingo:${{ needs.semantic-release.outputs.new_release_version }}
+          build-args: BUILD_ENVIRONMENT=production
+
+  helm-chart:
+    needs: [semantic-release, docker-build]
+    if: needs.semantic-release.outputs.new_release_published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main  # Make sure we get the latest changes after semantic-release
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v1
+
+      - name: Update Helm Chart version and app version
+        run: |
+          VERSION="${{ needs.semantic-release.outputs.new_release_version }}"
+          # Update version and appVersion in Chart.yaml
+          sed -i "s/^version:.*/version: $VERSION/" helm/bingo/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: $VERSION/" helm/bingo/Chart.yaml
+          # Update image tag in values.yaml
+          sed -i "s/tag:.*/tag: $VERSION/" helm/bingo/values.yaml
+          
+          # Show the changes
+          echo "Updated Chart.yaml:"
+          cat helm/bingo/Chart.yaml
+          echo "Updated values.yaml:"
+          cat helm/bingo/values.yaml
+
+      - name: Lint Helm Chart
+        run: helm lint helm/bingo
+
+      - name: Package Helm Chart
+        run: |
+          mkdir -p dist
+          helm package helm/bingo --destination dist
+          
+      - name: Upload Helm Chart to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.semantic-release.outputs.new_release_version }}
+          files: dist/*.tgz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
