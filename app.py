@@ -39,8 +39,8 @@ def init_app():
     init_routes()
 
     # Mount the static directory
-    app.add_static_files('/static', 'static')
-    #app.mount("/static", StaticFiles(directory="static"), name="static")
+    app.add_static_files("/static", "static")
+    # app.mount("/static", StaticFiles(directory="static"), name="static")
 
     return app
 

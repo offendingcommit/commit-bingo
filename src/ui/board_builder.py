@@ -4,7 +4,7 @@ Board builder UI component for the Bingo application.
 
 from typing import Callable, cast
 
-from nicegui import ui, app
+from nicegui import app, ui
 
 from src.config.constants import (
     BOARD_TILE_FONT,
@@ -219,4 +219,3 @@ def create_board_view(background_color: str, is_global: bool) -> None:
         local_tile_buttons: TileButtonsDict = {}
         build_board(container, local_tile_buttons, toggle_tile, board, clicked_tiles)
         board_views["stream"] = (container, local_tile_buttons)
-
