@@ -1,6 +1,20 @@
 # CHANGELOG
 
 
+## v1.1.4 (2025-03-08)
+
+### Bug Fixes
+
+- Pretty print health check
+  ([`1127fcf`](https://github.com/OffendingCommit/commit-bingo/commit/1127fcf34f92232dd8ab33c645973b32b5b0ce9b))
+
+- Sort imports
+  ([`c137a4e`](https://github.com/OffendingCommit/commit-bingo/commit/c137a4e510c198fdf1e3020e622e444616e29ada))
+
+- Switch to json dumps for health
+  ([`d484fb0`](https://github.com/OffendingCommit/commit-bingo/commit/d484fb0a1a41a22a80bf2f76ef32c92bc7983fdd))
+
+
 ## v1.1.3 (2025-03-08)
 
 ### Bug Fixes
