@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "bingo"
-version = "1.1.0"
+version = "1.1.1"
 description = "A bingo board generator using NiceGUI"
 authors = ["Offending Commit <offendingcommit@gmail.com>"]
 license = "MIT"

@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v1.1.1 (2025-03-08)
+
+### Bug Fixes
+
+- Release pipeline to listen to "The next version is"
+  ([`d9acadf`](https://github.com/OffendingCommit/commit-bingo/commit/d9acadff39302a5c200d747ca3a7c91d772d0365))
+
+
 ## v1.1.0 (2025-03-08)
 
 ### Bug Fixes
