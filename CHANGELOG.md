@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v1.1.2 (2025-03-08)
+
+### Bug Fixes
+
+- **ci**: Change semantic versioning workflow
+  ([`b588568`](https://github.com/OffendingCommit/commit-bingo/commit/b588568cdcb4872a0be2e443d488cd13983e4f1a))
+
+
 ## v1.1.1 (2025-03-08)
 
 ### Bug Fixes
