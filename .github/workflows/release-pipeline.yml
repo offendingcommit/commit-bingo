@@ -104,30 +104,30 @@ jobs:
       run: |
         git config --global user.name "semantic-release"
         git config --global user.email "semantic-release@users.noreply.github.com"
+        
         # Debug information
         echo "Current git status:"
         git status
         echo "Current branch:"
         git branch
         
-        # Run semantic release with verbose output
-        echo "Running semantic-release version"
-        VERSION_OUTPUT=$(poetry run semantic-release --verbose version)
-        echo "$VERSION_OUTPUT"
+        # Run semantic-release with output capturing
+        poetry run semantic-release --verbose version 2>&1 | tee version_output.txt
         
-        # Extract version information
-        if echo "$VERSION_OUTPUT" | grep -q "The next version is"; then
+        # Check if a new version was created
+        if grep -q "The next version is" version_output.txt; then
+          # Get the new version from pyproject.toml
           NEW_VERSION=$(poetry run python -c "import toml; print(toml.load('pyproject.toml')['tool']['poetry']['version'])")
+          echo "New version detected: $NEW_VERSION"
           echo "new_release_published=true" >> $GITHUB_OUTPUT
           echo "new_release_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "New version: $NEW_VERSION"
           
           # Publish the release
-          echo "Publishing release"
           poetry run semantic-release --verbose publish
         else
           echo "No version bump needed"
           echo "new_release_published=false" >> $GITHUB_OUTPUT
+          echo "new_release_version=" >> $GITHUB_OUTPUT
         fi
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -156,6 +156,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Debug outputs
+        run: |
+          echo "New release published: ${{ needs.semantic-release.outputs.new_release_published }}"
+          echo "New release version: ${{ needs.semantic-release.outputs.new_release_version }}"
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -182,6 +187,11 @@ jobs:
 
       - name: Set up Helm
         uses: azure/setup-helm@v1
+
+      - name: Debug outputs
+        run: |
+          echo "New release published: ${{ needs.semantic-release.outputs.new_release_published }}"
+          echo "New release version: ${{ needs.semantic-release.outputs.new_release_version }}"
 
       - name: Update Helm Chart version and app version
         run: |
