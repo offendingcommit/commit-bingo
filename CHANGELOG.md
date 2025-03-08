@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v1.1.3 (2025-03-08)
+
+### Bug Fixes
+
+- Add missing toml
+  ([`6122f04`](https://github.com/OffendingCommit/commit-bingo/commit/6122f04ce72f1a180db29cb67ff9a14338e63f18))
+
+
 ## v1.1.2 (2025-03-08)
 
 ### Bug Fixes
