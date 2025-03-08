@@ -4,7 +4,7 @@ Routes module for the Bingo application.
 
 import logging
 
-from nicegui import ui
+from nicegui import ui, app
 
 from src.config.constants import HOME_BG_COLOR, STREAM_BG_COLOR
 from src.ui.board_builder import create_board_view
@@ -20,6 +20,7 @@ def home_page():
     try:
         # Create a timer that deactivates when the client disconnects
         timer = ui.timer(0.1, sync_board_state)
+        app.on_disconnect(timer.cancel)
     except Exception as e:
         logging.warning(f"Error creating timer: {e}")
 
@@ -33,8 +34,13 @@ def stream_page():
     try:
         # Create a timer that deactivates when the client disconnects
         timer = ui.timer(0.1, sync_board_state)
+        app.on_disconnect(timer.cancel)
     except Exception as e:
         logging.warning(f"Error creating timer: {e}")
+
+@app.get("/health")
+def health():
+    return {'health': 'ok'}
 
 
 def init_routes():

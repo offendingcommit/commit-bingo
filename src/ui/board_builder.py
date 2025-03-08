@@ -4,7 +4,7 @@ Board builder UI component for the Bingo application.
 
 from typing import Callable, cast
 
-from nicegui import ui
+from nicegui import ui, app
 
 from src.config.constants import (
     BOARD_TILE_FONT,
@@ -207,6 +207,7 @@ def create_board_view(background_color: str, is_global: bool) -> None:
             check_timer = ui.timer(
                 1, lambda: check_phrases_file_change(on_phrases_change)
             )
+            app.on_disconnect(check_timer.cancel)
         except Exception as e:
             logging.warning(f"Error setting up timer: {e}")
 
@@ -218,3 +219,4 @@ def create_board_view(background_color: str, is_global: bool) -> None:
         local_tile_buttons: TileButtonsDict = {}
         build_board(container, local_tile_buttons, toggle_tile, board, clicked_tiles)
         board_views["stream"] = (container, local_tile_buttons)
+
