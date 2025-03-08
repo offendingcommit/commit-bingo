@@ -2,8 +2,8 @@
 Routes module for the Bingo application.
 """
 
-import logging
 import json
+import logging
 
 from nicegui import app, ui
 
