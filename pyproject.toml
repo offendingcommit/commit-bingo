@@ -12,6 +12,7 @@ exclude = [".git", ".git/"]
 [tool.poetry.dependencies]
 python = "^3.12"
 nicegui = "^2.11.0"
+toml = "^0.10.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
