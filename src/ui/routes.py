@@ -3,6 +3,7 @@ Routes module for the Bingo application.
 """
 
 import logging
+import json
 
 from nicegui import app, ui
 
@@ -41,7 +42,7 @@ def stream_page():
 
 @app.get("/health")
 def health():
-    return {"health": "ok"}
+    return json.dumps({"health": "ok"})
 
 
 def init_routes():
