@@ -42,7 +42,7 @@ def stream_page():
 
 @app.get("/health")
 def health():
-    return json.dumps({"health": "ok"})
+    return json.dumps({"health": "ok"}, indent=4, sort_keys=True)
 
 
 def init_routes():
