@@ -116,7 +116,7 @@ jobs:
         echo "$VERSION_OUTPUT"
         
         # Extract version information
-        if echo "$VERSION_OUTPUT" | grep -q "Bumping version"; then
+        if echo "$VERSION_OUTPUT" | grep -q "The next version is"; then
           NEW_VERSION=$(poetry run python -c "import toml; print(toml.load('pyproject.toml')['tool']['poetry']['version'])")
           echo "new_release_published=true" >> $GITHUB_OUTPUT
           echo "new_release_version=$NEW_VERSION" >> $GITHUB_OUTPUT
