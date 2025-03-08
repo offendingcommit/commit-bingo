@@ -1,15 +1,25 @@
 # CHANGELOG
 
 
+## v1.1.0 (2025-03-08)
+
+### Bug Fixes
+
+- Formatting
+  ([`6820b5d`](https://github.com/OffendingCommit/commit-bingo/commit/6820b5de5a4f2794565ecdb81ab952886c155530))
+
+### Features
+
+- Add health check
+  ([`b780dd9`](https://github.com/OffendingCommit/commit-bingo/commit/b780dd9d49dddf365e85ef23571ca0438b92b8a2))
+
+
 ## v1.0.0 (2025-03-03)
 
-This is the first major release of the Bingo application, reflecting the maturity and stability of the codebase. Key milestones include:
+### Chores
 
-- Complete modular architecture implementation
-- Stable UI with game closure functionality
-- Comprehensive test coverage
-- Full CI/CD pipeline with semantic versioning
-- Docker containerization and Helm chart for Kubernetes deployment
+- Disable replaced workflows and keep as reference
+  ([`a31f19d`](https://github.com/OffendingCommit/commit-bingo/commit/a31f19d41192718b2b73a641efd19f8e7f12eab2))
 
 
 ## v0.1.0 (2025-03-03)
