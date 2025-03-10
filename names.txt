@@ -1,0 +1,61 @@
+Rock
+Pop
+Jazz
+Blues
+Country
+Hip-Hop
+Rap
+R&B
+Soul
+Funk
+Reggae
+Ska
+Metal
+Punk
+Alternative
+Indie
+Electronic
+Techno
+House
+Trance
+Dubstep
+Drum and Bass
+Synthwave
+Ambient
+Lo-Fi
+Classical
+Opera
+Orchestral
+Baroque
+Romantic
+Folk
+Bluegrass
+Gospel
+Christian
+Latin
+Salsa
+Merengue
+Bachata
+Cumbia
+Reggaeton
+Afrobeat
+K-Pop
+J-Pop
+Celtic
+Flamenco
+Swing
+Big Band
+Disco
+Grunge
+Post-Rock
+Shoegaze
+Industrial
+New Age
+Experimental
+Trip-Hop
+Chillout
+Vaporwave
+Chiptune
+Soundtrack
+Musical Theatre
+Film Score

@@ -10,7 +10,7 @@ from config import config
 class WheelSpinner:
     def __init__(self, options_file=None):
         # Use config for file name if not specified
-        self.options_file = options_file or config['wheel'].NAMES_FILE
+        self.options_file = options_file or config['wheel'].OPTIONS_FILE
         self.options = self._load_options(self.options_file)
         
         # Get animation settings from config
@@ -258,7 +258,6 @@ def index():
             }}
             .wheel-slice-text {{
                 font-size: {config['wheel'].TEXT_SIZE}px;
-                fill: {config['wheel'].TEXT_COLOR};
                 text-anchor: end; /* Right-align text */
                 dominant-baseline: middle;
                 font-weight: {config['wheel'].TEXT_WEIGHT};
@@ -291,11 +290,56 @@ def index():
             text_distance_factor = config['wheel'].TEXT_DISTANCE_FACTOR
             slice_stroke_color = config['wheel'].SLICE_STROKE_COLOR
             slice_stroke_width = config['wheel'].SLICE_STROKE_WIDTH
+            text_contrast = config['wheel'].TEXT_CONTRAST
             
             ui.run_javascript(f'''
             (() => {{
                 const wheel = document.getElementById('{wheel_id}');
                 wheel.innerHTML = '';  // Clear existing slices
+                
+                // Function to calculate optimal text color shade for maximum readability
+                function calculateOptimalTextColor(bgColor) {{
+                    // Convert hex to RGB
+                    let hex = bgColor.charAt(0) === '#' ? bgColor.substring(1, 7) : bgColor;
+                    let r = parseInt(hex.substring(0, 2), 16);
+                    let g = parseInt(hex.substring(2, 4), 16);
+                    let b = parseInt(hex.substring(4, 6), 16);
+                    
+                    // Calculate perceptive luminance (YIQ equation)
+                    // This accounts for human perception of brightness
+                    let luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                    
+                    // Calculate the optimal grayscale value for contrast
+                    // The farther from background luminance, the better the contrast
+                    // We want at least a contrast ratio of 4.5:1 for WCAG AA compliance
+                    
+                    // For best contrast:
+                    // - If background is darker than mid-gray, use a lighter shade
+                    // - If background is lighter than mid-gray, use a darker shade
+                    // - The intensity depends on how far from mid-gray the background is
+                    
+                    // Calculate the "opposite" luminance value
+                    let targetLuminance;
+                    if (luminance < 0.5) {{
+                        // Dark background, find light text 
+                        // Scale using the configurable contrast value
+                        targetLuminance = Math.min(1.0, luminance + textContrast);
+                    }} else {{
+                        // Light background, find dark text
+                        // Scale using the configurable contrast value
+                        targetLuminance = Math.max(0.0, luminance - textContrast);
+                    }}
+                    
+                    // Apply some additional correction to improve contrast
+                    // Ensure the difference meets minimum WCAG AA standards
+                    if (Math.abs(targetLuminance - luminance) < textContrast) {{
+                        targetLuminance = luminance < 0.5 ? 1.0 : 0.0;
+                    }}
+                    
+                    // Convert luminance back to grayscale color
+                    const value = Math.round(targetLuminance * 255);
+                    return `rgb(${{value}}, ${{value}}, ${{value}})`;
+                }}
                 
                 const options = {spinner.options};
                 const colors = {spinner.colors};
@@ -306,6 +350,7 @@ def index():
                 const textDistanceFactor = {text_distance_factor};  // How far text is from center (0-1)
                 const strokeColor = '{slice_stroke_color}';
                 const strokeWidth = {slice_stroke_width};
+                const textContrast = {text_contrast};  // Contrast adjustment (higher = more contrast)
                 
                 for (let i = 0; i < sliceCount; i++) {{
                     // Calculate angles for this slice
@@ -345,13 +390,32 @@ def index():
                     const textX = textDistance * Math.sin(textRad);
                     const textY = -textDistance * Math.cos(textRad);
                     
-                    // To ensure text fits within slice, calculate max width based on angle
-                    // The smaller the slice, the shorter the text must be
-                    const maxTextLength = 2 * Math.PI * textDistance * (sliceAngle / 360);
+                    // Calculate the inner height of the slice at this distance from center
+                    // The height is approximately the arc length at this radius
+                    const sliceInnerHeight = 2 * Math.PI * textDistance * (sliceAngle / 360);
+                    
+                    // Estimate how many characters will fit in the slice height
+                    // SVG text size is roughly proportional to the number of characters that fit vertically
+                    // Get font size and character aspect ratio from config
+                    const fontSizeInPx = {config['wheel'].TEXT_SIZE};
+                    const charAspectRatio = {config['wheel'].TEXT_CHAR_RATIO}; // width/height ratio of typical character
+                    const effectiveCharHeight = fontSizeInPx;
+                    const estimatedMaxChars = Math.floor(sliceInnerHeight / (effectiveCharHeight * charAspectRatio));
+                    
+                    // Prepare text content - truncate with ellipsis if needed
+                    let displayText = options[i];
+                    if (displayText.length > estimatedMaxChars && estimatedMaxChars > 3) {{
+                        displayText = displayText.substring(0, estimatedMaxChars - 3) + '...';
+                    }}
                     
                     // Make text radial (point toward center)
                     // For right-aligned text, adjust the rotation
                     const textRotate = textAngle + 270;  // Perpendicular to the radius
+                    
+                    // Calculate optimal text color (black or white) based on background color
+                    let textColor = calculateOptimalTextColor(colors[i]);
+                    
+                    console.log(textColor)
                     
                     // Add text
                     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -359,9 +423,8 @@ def index():
                     text.setAttribute("y", textY);
                     text.setAttribute("transform", `rotate(${{textRotate}}, ${{textX}}, ${{textY}})`);
                     text.setAttribute("class", "wheel-slice-text");
-                    text.setAttribute("textLength", maxTextLength); // Ensure text fits within slice
-                    text.setAttribute("lengthAdjust", "spacingAndGlyphs"); // Scale text to fit
-                    text.textContent = options[i];
+                    text.setAttribute("fill", textColor); // Use calculated text color
+                    text.textContent = displayText;
                     wheel.appendChild(text);
                 }}
             }})();
@@ -399,7 +462,7 @@ def index():
 
 @ui.page('/reload')
 def reload_page():
-    options_file = config['wheel'].NAMES_FILE
+    options_file = config['wheel'].OPTIONS_FILE
     
     def save_options(options):
         with open(options_file, 'w') as f:
