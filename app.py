@@ -2,26 +2,38 @@ import random
 import math
 from pathlib import Path
 from nicegui import ui
-from typing import List, Optional
+from typing import List, Optional, Literal
 import colorsys
+from config import config
 
 
 class WheelSpinner:
-    def __init__(self, options_file='options.txt'):
-        self.options = self._load_options(options_file)
-        self.min_rotations = 5
-        self.max_rotations = 8
+    def __init__(self, options_file=None):
+        # Use config for file name if not specified
+        self.options_file = options_file or config['wheel'].NAMES_FILE
+        self.options = self._load_options(self.options_file)
+        
+        # Get animation settings from config
+        self.min_rotations = config['wheel'].MIN_ROTATIONS
+        self.max_rotations = config['wheel'].MAX_ROTATIONS
         self.result: Optional[str] = None
         self.is_spinning = False
         self.rotation_angle = 0
+        
+        # Generate colors based on configured color mode
+        self.color_mode = config['wheel'].COLOR_MODE
         self.colors = self._generate_colors(len(self.options))
+        
+        # Animation timers
         self.timer = None
         self.idle_timer = None
+        
+        # Animation settings from config
         self.spin_speed = 0
-        self.max_speed = 30
+        self.max_speed = config['wheel'].MAX_SPEED
         self.prev_slice_index = -1  # To track when we cross a slice boundary
-        self.idle_rotation_speed = 5  # Degrees per second for idle rotation
-        self.frame_rate = 60  # Animation frame rate
+        self.idle_rotation_speed = config['wheel'].IDLE_ROTATION_SPEED
+        self.frame_rate = config['wheel'].FRAME_RATE
         
     def _load_options(self, options_file) -> List[str]:
         path = Path(options_file)
@@ -31,15 +43,31 @@ class WheelSpinner:
         return ["No options found"]
     
     def _generate_colors(self, count: int) -> List[str]:
-        """Generate visually distinct colors for the wheel slices"""
+        """Generate colors for wheel slices based on the configured color mode"""
         colors = []
-        for i in range(count):
-            hue = i / count
-            # Generate pastel colors with high saturation and value
-            r, g, b = colorsys.hsv_to_rgb(hue, 0.7, 0.9)
-            # Convert to hex format
-            hex_color = f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
-            colors.append(hex_color)
+        
+        # RGB mode - generate colors using HSV color space
+        if self.color_mode == 'RGB':
+            for i in range(count):
+                hue = i / count
+                # Generate pastel colors with high saturation and value
+                r, g, b = colorsys.hsv_to_rgb(hue, 0.7, 0.9)
+                # Convert to hex format
+                hex_color = f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
+                colors.append(hex_color)
+                
+        # Custom mode - alternate between predefined colors
+        elif self.color_mode == 'CUSTOM':
+            custom_colors = config['wheel'].CUSTOM_COLORS
+            for i in range(count):
+                # Cycle through the custom colors
+                color_index = i % len(custom_colors)
+                colors.append(custom_colors[color_index])
+                
+        # Fallback to RGB mode if invalid mode specified
+        else:
+            return self._generate_colors(count)
+            
         return colors
     
     def start_idle_rotation(self, update_wheel_rotation):
@@ -97,10 +125,10 @@ class WheelSpinner:
         # Start with current rotation
         self.start_angle = self.rotation_angle % 360
         
-        # Animation parameters
-        self.spin_duration = 10.0  # total time in seconds
+        # Animation parameters from config
+        self.spin_duration = config['wheel'].SPIN_DURATION
         self.elapsed_time = 0
-        self.deceleration = 3  # Higher values mean faster deceleration
+        self.deceleration = config['wheel'].DECELERATION
         
         # Reset previous slice for tick sound
         self.prev_slice_index = -1
@@ -213,7 +241,7 @@ def index():
     spinner = WheelSpinner()
     
     with ui.card().classes('w-full max-w-2xl mx-auto'):
-        ui.label('Spinner').classes('text-3xl mx-auto text-center')
+        ui.label(config['server'].TITLE).classes('text-3xl mx-auto text-center')
         
         # Create SVG for the wheel
         ui.element('div').classes('relative mx-auto')
@@ -229,11 +257,11 @@ def index():
                 transition: transform 0.1s ease-out;
             }}
             .wheel-slice-text {{
-                font-size: 4px;
-                fill: black;
-                text-anchor: middle;
+                font-size: {config['wheel'].TEXT_SIZE}px;
+                fill: {config['wheel'].TEXT_COLOR};
+                text-anchor: end; /* Right-align text */
                 dominant-baseline: middle;
-                font-weight: bold;
+                font-weight: {config['wheel'].TEXT_WEIGHT};
             }}
         </style>
         ''')
@@ -248,7 +276,9 @@ def index():
                     
                 # Marker icon pointing to the winning slice (at 90 degrees - right side)
                 with ui.element('g').props(f'id="{marker_id}"'):
-                    ui.icon('arrow_circle_left', size='xl').style('color: red; position: absolute; right: -36px; top: 50%; transform: translateY(-50%);')
+                    ui.icon(config['wheel'].MARKER_ICON, size=config['wheel'].MARKER_SIZE).style(
+                        f'color: {config["wheel"].MARKER_COLOR}; position: absolute; right: -36px; top: 50%; transform: translateY(-50%);'
+                    )
         
         
         
@@ -257,6 +287,11 @@ def index():
         
         # Create the wheel slices
         def create_wheel_slices():
+            # Get configuration values for JavaScript
+            text_distance_factor = config['wheel'].TEXT_DISTANCE_FACTOR
+            slice_stroke_color = config['wheel'].SLICE_STROKE_COLOR
+            slice_stroke_width = config['wheel'].SLICE_STROKE_WIDTH
+            
             ui.run_javascript(f'''
             (() => {{
                 const wheel = document.getElementById('{wheel_id}');
@@ -266,6 +301,11 @@ def index():
                 const colors = {spinner.colors};
                 const sliceCount = options.length;
                 const sliceAngle = 360 / sliceCount;
+                
+                // Configuration values
+                const textDistanceFactor = {text_distance_factor};  // How far text is from center (0-1)
+                const strokeColor = '{slice_stroke_color}';
+                const strokeWidth = {slice_stroke_width};
                 
                 for (let i = 0; i < sliceCount; i++) {{
                     // Calculate angles for this slice
@@ -290,20 +330,27 @@ def index():
                     const slice = document.createElementNS("http://www.w3.org/2000/svg", "path");
                     slice.setAttribute("d", path);
                     slice.setAttribute("fill", colors[i]);
-                    slice.setAttribute("stroke", "white");
-                    slice.setAttribute("stroke-width", "0.5");
+                    slice.setAttribute("stroke", strokeColor);
+                    slice.setAttribute("stroke-width", strokeWidth);
                     slice.setAttribute("class", "wheel-slice");
                     wheel.appendChild(slice);
                     
-                    // Calculate position for text
+                    // Calculate position for text - use textDistanceFactor to position text closer to edge
                     const textAngle = startAngle + sliceAngle / 2;
                     const textRad = textAngle * Math.PI / 180;
-                    const textDistance = 30;  // Moved in a little for better visibility
+                    
+                    // Text distance is now controlled by the config factor (closer to 1 = closer to edge)
+                    const wheelRadius = 50;
+                    const textDistance = wheelRadius * textDistanceFactor;
                     const textX = textDistance * Math.sin(textRad);
                     const textY = -textDistance * Math.cos(textRad);
                     
+                    // To ensure text fits within slice, calculate max width based on angle
+                    // The smaller the slice, the shorter the text must be
+                    const maxTextLength = 2 * Math.PI * textDistance * (sliceAngle / 360);
+                    
                     // Make text radial (point toward center)
-                    // For radial text, we want text to be perpendicular to the radius
+                    // For right-aligned text, adjust the rotation
                     const textRotate = textAngle + 270;  // Perpendicular to the radius
                     
                     // Add text
@@ -312,6 +359,8 @@ def index():
                     text.setAttribute("y", textY);
                     text.setAttribute("transform", `rotate(${{textRotate}}, ${{textX}}, ${{textY}})`);
                     text.setAttribute("class", "wheel-slice-text");
+                    text.setAttribute("textLength", maxTextLength); // Ensure text fits within slice
+                    text.setAttribute("lengthAdjust", "spacingAndGlyphs"); // Scale text to fit
                     text.textContent = options[i];
                     wheel.appendChild(text);
                 }}
@@ -350,19 +399,21 @@ def index():
 
 @ui.page('/reload')
 def reload_page():
+    options_file = config['wheel'].NAMES_FILE
+    
     def save_options(options):
-        with open('options.txt', 'w') as f:
+        with open(options_file, 'w') as f:
             f.write('\n'.join(options))
-        ui.notify('options saved successfully', color='positive')
+        ui.notify('Options saved successfully', color='positive')
         ui.navigate.to('/')
     
     with ui.card().classes('w-full max-w-md mx-auto'):
-        ui.label('Edit options').classes('text-2xl text-center')
+        ui.label('Edit Options').classes('text-2xl text-center')
         
         # Load current options
         options = []
         try:
-            with open('options.txt', 'r') as f:
+            with open(options_file, 'r') as f:
                 options = [line.strip() for line in f.readlines()]
         except FileNotFoundError:
             pass
@@ -374,4 +425,4 @@ def reload_page():
             ui.button('Cancel', on_click=lambda: ui.navigate.to('/'))
             ui.button('Save', on_click=lambda: save_options(options_area.value.split('\n')))
 
-ui.run(title='Name Spinner', port=8080)
+ui.run(title=config['server'].TITLE, port=config['server'].PORT)
