@@ -212,11 +212,11 @@ class WheelSpinner:
 def index():
     spinner = WheelSpinner()
     
-    with ui.card().classes('w-full max-w-lg mx-auto'):
+    with ui.card().classes('w-full max-w-2xl mx-auto'):
         ui.label('Name Spinner').classes('text-2xl text-center')
         
         # Create SVG for the wheel
-        ui.element('div').classes('relative mx-auto my-4 w-80 h-80')
+        ui.element('div').classes('relative mx-auto')
         
         # We'll use client-side JS to manage the wheel since NiceGUI's HTML handling has changed
         wheel_id = 'wheel-' + str(random.randint(10000, 99999))
@@ -235,31 +235,25 @@ def index():
                 dominant-baseline: middle;
                 font-weight: bold;
             }}
-            #{marker_id} {{
-                fill: red;
-                position: absolute;
-                top: 0;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 20px;
-                height: 10px;
-            }}
         </style>
         ''')
+        with ui.row().classes("w-full") as wheel:
+            # Create the basic SVG structure
+            with ui.element('div').classes('relative w-full h-full'):
+                with ui.element('svg').classes('w-full h-full').props('viewBox="0 0 100 100"'):
+                    # Group for the wheel (will be centered and rotated)
+                    with ui.element('g').props(f'id="{wheel_id}" transform="translate(50, 50)"'):
+                        # We'll add slices with JavaScript
+                        pass
+                    
+                # Marker icon pointing to the winning slice (at 90 degrees - right side)
+                with ui.element('g').props(f'id="{marker_id}"'):
+                    ui.icon('arrow_circle_left', size='xl').style('color: red; position: absolute; right: -36px; top: 50%; transform: translateY(-50%);')
         
-        # Create the basic SVG structure
-        with ui.element('div').classes('relative w-full h-full'):
-            with ui.element('svg').classes('w-full h-full').props('viewBox="0 0 100 100"'):
-                # Group for the wheel (will be centered and rotated)
-                with ui.element('g').props(f'id="{wheel_id}" transform="translate(50, 50)"'):
-                    # We'll add slices with JavaScript
-                    pass
-                
-                # Marker triangle pointing to the winning slice (at 90 degrees - right side)
-                ui.html(f'<path id="{marker_id}" d="M 95 50 L 100 55 L 100 45 Z" fill="red" />')
+        
         
         # Result display
-        result_display = ui.label('Click Spin to start').classes('text-xl text-center p-2 my-2 border rounded')
+        result_display = ui.label('Click Spin to start').classes('w-full text-xl text-center p-2 my-2 border rounded')
         
         # Create the wheel slices
         def create_wheel_slices():
@@ -350,9 +344,9 @@ def index():
             
             spin_button = ui.button('Spin', icon='casino', on_click=handle_spin)
         
-        # Option to reload names
-        with ui.row().classes('w-full justify-center mt-4'):
-            ui.button('Reload Names', icon='refresh', on_click=lambda: ui.navigate.to('/reload'))
+            reload_button = ui.button('Reload Names', icon='refresh', on_click=lambda: ui.navigate.to('/reload'))
+            
+        wheel.on("click", handle_spin)
 
 @ui.page('/reload')
 def reload_page():
