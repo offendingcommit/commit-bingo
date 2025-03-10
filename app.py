@@ -7,14 +7,14 @@ import colorsys
 
 
 class WheelSpinner:
-    def __init__(self, names_file='names.txt'):
-        self.names = self._load_names(names_file)
+    def __init__(self, options_file='options.txt'):
+        self.options = self._load_options(options_file)
         self.min_rotations = 5
         self.max_rotations = 8
         self.result: Optional[str] = None
         self.is_spinning = False
         self.rotation_angle = 0
-        self.colors = self._generate_colors(len(self.names))
+        self.colors = self._generate_colors(len(self.options))
         self.timer = None
         self.idle_timer = None
         self.spin_speed = 0
@@ -23,12 +23,12 @@ class WheelSpinner:
         self.idle_rotation_speed = 5  # Degrees per second for idle rotation
         self.frame_rate = 60  # Animation frame rate
         
-    def _load_names(self, names_file) -> List[str]:
-        path = Path(names_file)
+    def _load_options(self, options_file) -> List[str]:
+        path = Path(options_file)
         if path.exists():
             with open(path, 'r') as f:
                 return [name.strip() for name in f.readlines() if name.strip()]
-        return ["No names found"]
+        return ["No options found"]
     
     def _generate_colors(self, count: int) -> List[str]:
         """Generate visually distinct colors for the wheel slices"""
@@ -65,7 +65,7 @@ class WheelSpinner:
         """
         Start spinning the wheel using a timer for animation.
         """
-        if not self.names or self.is_spinning:
+        if not self.options or self.is_spinning:
             return
             
         # If idle animation is running, stop it during the spin
@@ -81,11 +81,11 @@ class WheelSpinner:
         self.total_rotation = rotations * 360
         
         # Calculate the final position
-        slice_angle = 360 / len(self.names)
+        slice_angle = 360 / len(self.options)
         
         # The final angle needs to point to a specific name
         # We first determine the final index, then calculate the exact angle needed
-        self.final_index = random.randint(0, len(self.names) - 1)
+        self.final_index = random.randint(0, len(self.options) - 1)
         
         # Calculate the center angle for the final slice
         slice_center = self.final_index * slice_angle + slice_angle / 2
@@ -153,7 +153,7 @@ class WheelSpinner:
         
         # Get the current selected name based on the angle
         current_index = self._get_index_from_angle(current_angle)
-        self.result = self.names[current_index]
+        self.result = self.options[current_index]
         
         # Check if we crossed a slice boundary for tick sound
         if current_index != self.prev_slice_index:
@@ -202,18 +202,18 @@ class WheelSpinner:
         relative_angle = (marker_angle - normalized_angle) % 360
         
         # Determine which slice this angle falls into
-        slice_angle = 360 / len(self.names)
+        slice_angle = 360 / len(self.options)
         index = int(relative_angle / slice_angle)
         
         # Ensure index is within bounds
-        return index % len(self.names)
+        return index % len(self.options)
 
 @ui.page('/')
 def index():
     spinner = WheelSpinner()
     
     with ui.card().classes('w-full max-w-2xl mx-auto'):
-        ui.label('Name Spinner').classes('text-2xl text-center')
+        ui.label('Spinner').classes('text-3xl mx-auto text-center')
         
         # Create SVG for the wheel
         ui.element('div').classes('relative mx-auto')
@@ -262,9 +262,9 @@ def index():
                 const wheel = document.getElementById('{wheel_id}');
                 wheel.innerHTML = '';  // Clear existing slices
                 
-                const names = {spinner.names};
+                const options = {spinner.options};
                 const colors = {spinner.colors};
-                const sliceCount = names.length;
+                const sliceCount = options.length;
                 const sliceAngle = 360 / sliceCount;
                 
                 for (let i = 0; i < sliceCount; i++) {{
@@ -312,7 +312,7 @@ def index():
                     text.setAttribute("y", textY);
                     text.setAttribute("transform", `rotate(${{textRotate}}, ${{textX}}, ${{textY}})`);
                     text.setAttribute("class", "wheel-slice-text");
-                    text.textContent = names[i];
+                    text.textContent = options[i];
                     wheel.appendChild(text);
                 }}
             }})();
@@ -335,8 +335,8 @@ def index():
         # Control panel
         with ui.row().classes('w-full justify-center'):
             def handle_spin():
-                if not spinner.names:
-                    ui.notify('No names loaded', color='negative')
+                if not spinner.options:
+                    ui.notify('No options loaded', color='negative')
                     return
                 
                 # Start the animated spin with timer
@@ -344,34 +344,34 @@ def index():
             
             spin_button = ui.button('Spin', icon='casino', on_click=handle_spin)
         
-            reload_button = ui.button('Reload Names', icon='refresh', on_click=lambda: ui.navigate.to('/reload'))
+            reload_button = ui.button('Reload options', icon='refresh', on_click=lambda: ui.navigate.to('/reload'))
             
         wheel.on("click", handle_spin)
 
 @ui.page('/reload')
 def reload_page():
-    def save_names(names):
-        with open('names.txt', 'w') as f:
-            f.write('\n'.join(names))
-        ui.notify('Names saved successfully', color='positive')
+    def save_options(options):
+        with open('options.txt', 'w') as f:
+            f.write('\n'.join(options))
+        ui.notify('options saved successfully', color='positive')
         ui.navigate.to('/')
     
     with ui.card().classes('w-full max-w-md mx-auto'):
-        ui.label('Edit Names').classes('text-2xl text-center')
+        ui.label('Edit options').classes('text-2xl text-center')
         
-        # Load current names
-        names = []
+        # Load current options
+        options = []
         try:
-            with open('names.txt', 'r') as f:
-                names = [line.strip() for line in f.readlines()]
+            with open('options.txt', 'r') as f:
+                options = [line.strip() for line in f.readlines()]
         except FileNotFoundError:
             pass
         
-        # Text area for editing names
-        names_area = ui.textarea('Names (one per line)', value='\n'.join(names)).classes('w-full')
+        # Text area for editing options
+        options_area = ui.textarea('options (one per line)', value='\n'.join(options)).classes('w-full')
         
         with ui.row().classes('w-full justify-end'):
             ui.button('Cancel', on_click=lambda: ui.navigate.to('/'))
-            ui.button('Save', on_click=lambda: save_names(names_area.value.split('\n')))
+            ui.button('Save', on_click=lambda: save_options(options_area.value.split('\n')))
 
 ui.run(title='Name Spinner', port=8080)
