@@ -1,6 +1,13 @@
 # Spinner Project Guidelines
 
 ## Development Commands
+### Using Poetry
+- Run app: `poetry run python app.py`
+- Install dependencies: `poetry install`
+- Lint: `poetry run flake8 app.py`
+- Type check: `poetry run mypy app.py`
+
+### Using pip (legacy)
 - Run app: `python app.py`
 - Install dependencies: `pip install -r requirements.txt`
 - Lint: `flake8 app.py`
@@ -16,4 +23,6 @@
 ## Project Structure
 - `app.py`: Main application file with NiceGUI interface
 - `names.txt`: Text file containing names for the spinner
-- `requirements.txt`: Project dependencies
+- `pyproject.toml`: Poetry project configuration
+- `poetry.lock`: Poetry lock file with exact dependency versions
+- `requirements.txt`: Legacy pip project dependencies
