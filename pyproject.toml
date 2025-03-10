@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "spinner"
+version = "0.1.0"
+description = "A wheel spinner application"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.8,<4.0"
+nicegui = ">=2.12.1,<3.0.0"
+typing-extensions = "^4.0.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
