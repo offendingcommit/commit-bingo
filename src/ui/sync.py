@@ -45,9 +45,9 @@ def sync_board_state():
                     controls_row.clear()
                     with controls_row:
                         with ui.button(
-                            "", icon="autorenew", on_click=reopen_game
-                        ).classes("rounded-full w-12 h-12") as new_game_btn:
-                            ui.tooltip("Start New Game")
+                            "Start New Game", icon="autorenew", on_click=reopen_game
+                        ).classes("px-4 py-2") as new_game_btn:
+                            ui.tooltip("Start a new game with a fresh board")
 
             return
         else:

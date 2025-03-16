@@ -5,9 +5,10 @@ Core game logic for the Bingo application.
 import datetime
 import logging
 import random
-from typing import List, Optional, Set, cast
+import json
+from typing import List, Optional, Set, Dict, Any, Tuple, cast
 
-from nicegui import ui
+from nicegui import ui, app
 
 from src.config.constants import (
     CLOSED_HEADER_TEXT,
@@ -103,6 +104,9 @@ def toggle_tile(row: int, col: int) -> None:
         clicked_tiles.add(key)
 
     check_winner()
+    
+    # Save state to storage after each tile toggle for persistence
+    save_state_to_storage()
 
     for view_key, (container, tile_buttons_local) in board_views.items():
         for (r, c), tile in tile_buttons_local.items():
@@ -143,6 +147,10 @@ def toggle_tile(row: int, col: int) -> None:
             }, 50);
         """
         ui.run_javascript(js_code)
+        
+        # In NiceGUI 2.11+, updates are automatically synchronized between clients
+        # via the timer-based sync_board_state function running frequently
+        logging.debug("UI updates will be synchronized by timers")
     except Exception as e:
         logging.debug(f"JavaScript execution failed: {e}")
 
@@ -265,6 +273,9 @@ def reset_board() -> None:
         for c, phrase in enumerate(row):
             if phrase.upper() == FREE_SPACE_TEXT:
                 clicked_tiles.add((r, c))
+    
+    # Save state after reset for persistence
+    save_state_to_storage()
 
 
 def generate_new_board(phrases: List[str]) -> None:
@@ -322,19 +333,17 @@ def close_game() -> None:
     if controls_row is not None:
         controls_row.clear()
         with controls_row:
-            with ui.button("", icon="autorenew", on_click=reopen_game).classes(
-                "rounded-full w-12 h-12"
+            with ui.button("Start New Game", icon="autorenew", on_click=reopen_game).classes(
+                "px-4 py-2"
             ) as new_game_btn:
-                ui.tooltip("Start New Game")
+                ui.tooltip("Start a new game with a fresh board")
 
-    # Update stream page as well - this will trigger sync_board_state on connected clients
-    # Note: ui.broadcast() was used in older versions of NiceGUI, but may not be available
-    try:
-        ui.broadcast()  # Broadcast changes to all connected clients
-    except AttributeError:
-        # In newer versions of NiceGUI, broadcast might not be available
-        # We rely on the timer-based sync instead
-        logging.info("ui.broadcast not available, relying on timer-based sync")
+    # Save game state with is_game_closed=True for persistence
+    save_state_to_storage()
+
+    # In NiceGUI 2.11+, updates are automatically synchronized between clients
+    # via the timer-based sync_board_state function
+    logging.info("Game closed - changes will be synchronized by timers")
 
     # Notify that game has been closed
     ui.notify("Game has been closed", color="red", duration=3)
@@ -385,11 +394,86 @@ def reopen_game() -> None:
     # Notify that a new game has started
     ui.notify("New game started", color="green", duration=3)
 
-    # Update stream page and all other connected clients
-    # This will trigger sync_board_state on all clients including the stream view
+    # In NiceGUI 2.11+, updates are automatically synchronized between clients
+    # via the timer-based sync_board_state function
+    logging.info("Game reopened - changes will be synchronized by timers")
+        
+    # Save state to storage for persistence across app restarts
+    save_state_to_storage()
+
+
+def save_state_to_storage() -> bool:
+    """
+    Save the current game state to app.storage.general for persistence
+    across application restarts.
+    
+    Returns:
+        bool: True if state was saved successfully, False otherwise
+    """
     try:
-        ui.broadcast()  # Broadcast changes to all connected clients
-    except AttributeError:
-        # In newer versions of NiceGUI, broadcast might not be available
-        # We rely on the timer-based sync instead
-        logging.info("ui.broadcast not available, relying on timer-based sync")
+        if not hasattr(app, 'storage') or not hasattr(app.storage, 'general'):
+            logging.warning("app.storage.general not available")
+            return False
+        
+        # Convert non-JSON-serializable types to serializable equivalents
+        clicked_tiles_list = list(tuple(coord) for coord in clicked_tiles)
+        bingo_patterns_list = list(bingo_patterns)
+        
+        # Prepare state dictionary
+        state = {
+            'board': board,
+            'clicked_tiles': clicked_tiles_list,
+            'bingo_patterns': bingo_patterns_list,
+            'board_iteration': board_iteration,
+            'is_game_closed': is_game_closed,
+            'today_seed': today_seed
+        }
+        
+        # Save to storage
+        app.storage.general['game_state'] = state
+        logging.debug("Game state saved to persistent storage")
+        return True
+    except Exception as e:
+        logging.error(f"Error saving state to storage: {e}")
+        return False
+
+
+def load_state_from_storage() -> bool:
+    """
+    Load game state from app.storage.general if available.
+    
+    Returns:
+        bool: True if state was loaded successfully, False otherwise
+    """
+    global board, clicked_tiles, bingo_patterns, board_iteration, is_game_closed, today_seed
+    
+    try:
+        if not hasattr(app, 'storage') or not hasattr(app.storage, 'general'):
+            logging.warning("app.storage.general not available")
+            return False
+        
+        if 'game_state' not in app.storage.general:
+            logging.debug("No saved game state found in storage")
+            return False
+        
+        state = app.storage.general['game_state']
+        
+        # Load board
+        board = state['board']
+        
+        # Convert clicked_tiles from list back to set
+        clicked_tiles = set(tuple(coord) for coord in state['clicked_tiles'])
+        
+        # Convert bingo_patterns from list back to set
+        bingo_patterns = set(state['bingo_patterns'])
+        
+        # Load other state variables
+        board_iteration = state['board_iteration']
+        is_game_closed = state['is_game_closed']
+        today_seed = state['today_seed']
+        
+        logging.debug("Game state loaded from persistent storage")
+        return True
+    except Exception as e:
+        logging.error(f"Error loading state from storage: {e}")
+        return False

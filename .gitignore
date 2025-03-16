@@ -52,3 +52,4 @@ Thumbs.db
 
 # Poetry lock file (optional – some teams prefer to version-control this)
 poetry.lock
+.nicegui/

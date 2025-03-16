@@ -17,6 +17,7 @@ from src.core.game_logic import (
     generate_board,
     is_game_closed,
     today_seed,
+    load_state_from_storage,
 )
 from src.ui.routes import init_routes
 from src.utils.file_operations import read_phrases_file
@@ -30,10 +31,18 @@ logging.basicConfig(
 # Initialize the application
 def init_app():
     """Initialize the Bingo application."""
+    # Ensure storage is initialized
+    if not hasattr(app.storage, 'general'):
+        app.storage.general = {}
 
-    # Initialize game state
-    phrases = read_phrases_file()
-    generate_board(board_iteration, phrases)
+    # Try to load state from storage first
+    if load_state_from_storage():
+        logging.info("Game state loaded from persistent storage")
+    else:
+        # If no saved state exists, initialize fresh game state
+        logging.info("No saved state found, initializing fresh game state")
+        phrases = read_phrases_file()
+        generate_board(board_iteration, phrases)
 
     # Initialize routes
     init_routes()
@@ -48,4 +57,4 @@ def init_app():
 if __name__ in {"__main__", "__mp_main__"}:
     # Run the NiceGUI app
     init_app()
-    ui.run(port=8080, title=f"{HEADER_TEXT}", dark=False)
+    ui.run(port=8080, title=f"{HEADER_TEXT}", dark=False, storage_secret=os.getenv("STORAGE_SECRET","ThisIsMyCrappyStorageSecret"))

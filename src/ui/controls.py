@@ -27,18 +27,18 @@ def create_controls_row():
     phrases = read_phrases_file()
 
     with ui.row().classes("w-full mt-4 items-center justify-center gap-4") as row:
-        with ui.button("", icon="refresh", on_click=lambda: reset_board()).classes(
-            "rounded-full w-12 h-12"
+        with ui.button("Reset", icon="refresh", on_click=lambda: reset_board()).classes(
+            "px-4 py-2"
         ) as reset_btn:
-            ui.tooltip("Reset Board")
+            ui.tooltip("Reset the board while keeping the same phrases")
         with ui.button(
-            "", icon="autorenew", on_click=lambda: generate_new_board(phrases)
-        ).classes("rounded-full w-12 h-12") as new_board_btn:
-            ui.tooltip("New Board")
-        with ui.button("", icon="close", on_click=close_game).classes(
-            "rounded-full w-12 h-12 bg-red-500"
+            "New Board", icon="autorenew", on_click=lambda: generate_new_board(phrases)
+        ).classes("px-4 py-2") as new_board_btn:
+            ui.tooltip("Generate a completely new board")
+        with ui.button("Close Game", icon="close", on_click=close_game).classes(
+            "px-4 py-2 bg-red-500"
         ) as close_btn:
-            ui.tooltip("Close Game")
+            ui.tooltip("Close the game for all viewers")
         ui_seed_label = (
             ui.label(f"Seed: {today_seed}")
             .classes("text-sm text-center")
@@ -64,18 +64,18 @@ def rebuild_controls_row(row):
 
     row.clear()
     with row:
-        with ui.button("", icon="refresh", on_click=lambda: reset_board()).classes(
-            "rounded-full w-12 h-12"
+        with ui.button("Reset", icon="refresh", on_click=lambda: reset_board()).classes(
+            "px-4 py-2"
         ) as reset_btn:
-            ui.tooltip("Reset Board")
+            ui.tooltip("Reset the board while keeping the same phrases")
         with ui.button(
-            "", icon="autorenew", on_click=lambda: generate_new_board(phrases)
-        ).classes("rounded-full w-12 h-12") as new_board_btn:
-            ui.tooltip("New Board")
-        with ui.button("", icon="close", on_click=close_game).classes(
-            "rounded-full w-12 h-12 bg-red-500"
+            "New Board", icon="autorenew", on_click=lambda: generate_new_board(phrases)
+        ).classes("px-4 py-2") as new_board_btn:
+            ui.tooltip("Generate a completely new board")
+        with ui.button("Close Game", icon="close", on_click=close_game).classes(
+            "px-4 py-2 bg-red-500"
         ) as close_btn:
-            ui.tooltip("Close Game")
+            ui.tooltip("Close the game for all viewers")
         ui_seed_label = (
             ui.label(f"Seed: {today_seed}")
             .classes("text-sm text-center")
