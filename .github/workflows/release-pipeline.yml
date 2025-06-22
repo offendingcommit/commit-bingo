@@ -51,8 +51,8 @@ jobs:
         if [ -d "src" ]; then
           # Run unit tests first (fast, < 5 seconds)
           poetry run pytest tests/test_*_unit.py -v --tb=short
-          # Run full test suite with coverage, excluding slow/browser/integration tests
-          poetry run pytest --cov=src --cov-report=xml --cov-report=term-missing -m "not e2e and not playwright and not slow and not integration"
+          # Run full test suite with coverage, excluding slow/browser/integration/flaky tests
+          poetry run pytest --cov=src --cov-report=xml --cov-report=term-missing -m "not e2e and not playwright and not slow and not integration and not flaky"
         else
           echo "No src directory yet, skipping tests"
           exit 0

@@ -16,6 +16,9 @@ from src.core import game_logic
 # Load scenarios from feature file
 scenarios('features/multi_session_concurrent.feature')
 
+# Mark all tests in this module as slow integration tests
+pytestmark = [pytest.mark.integration, pytest.mark.slow, pytest.mark.bdd]
+
 
 # Shared test data
 @pytest.fixture

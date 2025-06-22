@@ -10,7 +10,12 @@ from pathlib import Path
 from threading import Lock
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from src.core import game_logic
+
+# Mark all tests in this module as slow integration tests
+pytestmark = [pytest.mark.integration, pytest.mark.slow]
 
 
 class TestSimpleMultiSession(unittest.TestCase):

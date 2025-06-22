@@ -242,7 +242,13 @@ class TestBoardBuilder(unittest.TestCase):
         
         # Verify container was created with correct classes
         mock_ui.element.assert_called_with("div")
-        mock_container.classes.assert_called_with("stream-board-container flex justify-center items-center w-full")
+        # Check that the stream container class was called (there may be multiple .classes() calls)
+        stream_classes_called = any(
+            call.args[0] == "stream-board-container flex justify-center items-center w-full"
+            for call in mock_container.classes.call_args_list
+        )
+        self.assertTrue(stream_classes_called, 
+                       f"Expected 'stream-board-container flex justify-center items-center w-full' in classes calls: {mock_container.classes.call_args_list}")
         
         # Verify JavaScript was attempted to be run (may fail in tests)
         # The exact call might be different due to error handling

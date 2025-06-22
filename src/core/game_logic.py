@@ -101,6 +101,7 @@ def toggle_tile(row: int, col: int) -> None:
     if (row, col) == (2, 2):
         return
 
+    # Update global state first (for backward compatibility with tests)
     key: Coordinate = (row, col)
     if key in clicked_tiles:
         clicked_tiles.remove(key)
