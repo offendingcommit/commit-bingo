@@ -11,10 +11,14 @@ from pathlib import Path
 from threading import Lock
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from src.core import game_logic
 from src.core.state_manager import GameStateManager, get_state_manager
 
 
+@pytest.mark.integration
+@pytest.mark.slow
 class TestMultiSessionResponsiveness(unittest.TestCase):
     """Tests for responsiveness across multiple concurrent sessions."""
 
