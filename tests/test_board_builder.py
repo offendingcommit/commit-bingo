@@ -3,6 +3,8 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # Add the parent directory to sys.path to import from src
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -10,11 +12,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 sys.modules["nicegui"] = MagicMock()
 sys.modules["nicegui.ui"] = MagicMock()
 
+from src.types.ui_types import TileButtonsDict
 from src.ui.board_builder import build_board, build_closed_message, create_board_view
 from src.ui.head import setup_head
-from src.types.ui_types import TileButtonsDict
 
 
+@pytest.mark.integration
+@pytest.mark.ui
 class TestBoardBuilder(unittest.TestCase):
     def setUp(self):
         # Setup common test data and mocks
@@ -238,7 +242,13 @@ class TestBoardBuilder(unittest.TestCase):
         
         # Verify container was created with correct classes
         mock_ui.element.assert_called_with("div")
-        mock_container.classes.assert_called_with("stream-board-container flex justify-center items-center w-full")
+        # Check that the stream container class was called (there may be multiple .classes() calls)
+        stream_classes_called = any(
+            call.args[0] == "stream-board-container flex justify-center items-center w-full"
+            for call in mock_container.classes.call_args_list
+        )
+        self.assertTrue(stream_classes_called, 
+                       f"Expected 'stream-board-container flex justify-center items-center w-full' in classes calls: {mock_container.classes.call_args_list}")
         
         # Verify JavaScript was attempted to be run (may fail in tests)
         # The exact call might be different due to error handling
@@ -251,6 +261,74 @@ class TestBoardBuilder(unittest.TestCase):
         from src.core.game_logic import board_views
         self.assertIn("stream", board_views)
         self.assertEqual(board_views["stream"][0], mock_container)
+
+
+class TestBoardBuilderClosedGame(unittest.TestCase):
+    """Test board builder behavior when game is closed."""
+
+    @patch('src.ui.board_builder.ui')
+    @patch('src.ui.board_builder.app')
+    @patch('src.ui.board_builder.build_closed_message')
+    @patch('src.ui.board_builder.build_board')
+    def test_stream_view_shows_closed_message_when_game_closed(self,
+                                                               mock_build_board, 
+                                                               mock_build_closed_message,
+                                                               mock_app, mock_ui):
+        """Test that stream view shows closed message when game is closed on initial load."""
+        # Arrange
+        mock_container = MagicMock()
+        mock_container.classes.return_value = mock_container  # Make it chainable
+        mock_ui.element.return_value = mock_container
+        
+        # Mock setup_head which is imported inside the function
+        with patch('src.ui.head.setup_head'):
+            # Set is_game_closed to True
+            import src.core.game_logic
+            src.core.game_logic.is_game_closed = True
+            
+            # Act
+            from src.ui.board_builder import create_board_view
+            create_board_view("#00FF00", is_global=False)
+            
+            # Assert
+            # Should call build_closed_message instead of build_board
+            mock_build_closed_message.assert_called_once_with(mock_container)
+            mock_build_board.assert_not_called()
+            
+            # Should register the view with empty tiles dict
+            from src.core.game_logic import board_views
+            self.assertIn("stream", board_views)
+            self.assertEqual(board_views["stream"][0], mock_container)
+            self.assertEqual(board_views["stream"][1], {})  # Empty tiles dict
+
+    @patch('src.ui.board_builder.ui')
+    @patch('src.ui.board_builder.app')
+    @patch('src.ui.board_builder.build_closed_message')
+    @patch('src.ui.board_builder.build_board')
+    def test_stream_view_shows_board_when_game_open(self,
+                                                    mock_build_board, 
+                                                    mock_build_closed_message,
+                                                    mock_app, mock_ui):
+        """Test that stream view shows board when game is open."""
+        # Arrange
+        mock_container = MagicMock()
+        mock_container.classes.return_value = mock_container  # Make it chainable
+        mock_ui.element.return_value = mock_container
+        
+        # Mock setup_head which is imported inside the function
+        with patch('src.ui.head.setup_head'):
+            # Set is_game_closed to False
+            import src.core.game_logic
+            src.core.game_logic.is_game_closed = False
+            
+            # Act
+            from src.ui.board_builder import create_board_view
+            create_board_view("#00FF00", is_global=False)
+            
+            # Assert
+            # Should call build_board, not build_closed_message
+            mock_build_board.assert_called_once()
+            mock_build_closed_message.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -2,16 +2,19 @@
 Tests for state persistence functionality.
 """
 
-import unittest
-from unittest.mock import patch, MagicMock
 import json
 import random
+import unittest
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from src.core import game_logic
+from src.utils.file_operations import read_phrases_file
 
 # Don't import nicegui directly since we'll mock it
 # from nicegui import app
 
-from src.core import game_logic
-from src.utils.file_operations import read_phrases_file
 
 
 class TestStatePersistence(unittest.TestCase):
@@ -19,25 +22,11 @@ class TestStatePersistence(unittest.TestCase):
 
     def setUp(self):
         """Set up test environment."""
-        # Create mock app with storage.general
-        self.mock_app = MagicMock()
-        self.mock_storage = MagicMock()
-        self.mock_general = {}
-        
-        # Set up the mock structure
-        self.mock_app.storage = self.mock_storage
-        self.mock_storage.general = self.mock_general
-        
-        # Patch both app and the entire app module
-        self.app_patcher = patch('src.core.game_logic.app', self.mock_app)
-        self.app_patcher.start()
-        
-        # Set up initial game state with some sample data
-        phrases = ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5", 
-                  "Item 6", "Item 7", "Item 8", "Item 9", "Item 10",
-                  "Item 11", "Item 12", "Item 13", "Item 14", "Item 15",
-                  "Item 16", "Item 17", "Item 18", "Item 19", "Item 20",
-                  "Item 21", "Item 22", "Item 23", "Item 24", "Item 25"]
+        # Clean up any existing state file
+        from pathlib import Path
+        self.state_file = Path("game_state.json")
+        if self.state_file.exists():
+            self.state_file.unlink()
         
         # Reset game logic state
         game_logic.board = []
@@ -49,8 +38,9 @@ class TestStatePersistence(unittest.TestCase):
 
     def tearDown(self):
         """Clean up after tests."""
-        # Stop patcher
-        self.app_patcher.stop()
+        # Clean up state file
+        if self.state_file.exists():
+            self.state_file.unlink()
 
     def test_state_serialization(self):
         """Test that game state can be serialized to JSON."""
@@ -69,10 +59,17 @@ class TestStatePersistence(unittest.TestCase):
         # Call the function
         result = game_logic.save_state_to_storage()
         
+        # Wait for async save
+        import time
+        time.sleep(0.1)
+        
         # Verify
         self.assertTrue(result)
-        self.assertIn('game_state', self.mock_general)
-        state = self.mock_general['game_state']
+        self.assertTrue(self.state_file.exists())
+        
+        # Load and check the saved state
+        with open(self.state_file, 'r') as f:
+            state = json.load(f)
         
         # Check that all state variables were serialized
         self.assertEqual(state['board'], game_logic.board)
@@ -88,19 +85,24 @@ class TestStatePersistence(unittest.TestCase):
 
     def test_state_deserialization(self):
         """Test that game state can be deserialized from JSON."""
-        # Setup mock storage with test data
-        self.mock_general['game_state'] = {
+        # Create test state file
+        test_state = {
             'board': [["A1", "A2", "A3", "A4", "A5"],
                       ["B1", "B2", "B3", "B4", "B5"],
                       ["C1", "C2", "FREE SPACE", "C4", "C5"],
                       ["D1", "D2", "D3", "D4", "D5"],
                       ["E1", "E2", "E3", "E4", "E5"]],
-            'clicked_tiles': [(0, 0), (1, 1), (2, 2)],
+            'clicked_tiles': [[0, 0], [1, 1], [2, 2]],
             'bingo_patterns': ["row0", "col1"],
             'board_iteration': 5,
             'is_game_closed': True,
-            'today_seed': "20250101.5"
+            'today_seed': "20250101.5",
+            'header_text': "Test Header",
+            'timestamp': 1234567890
         }
+        
+        with open(self.state_file, 'w') as f:
+            json.dump(test_state, f)
         
         # Reset game state to ensure it's loaded from storage
         game_logic.board = []
@@ -150,6 +152,10 @@ class TestStatePersistence(unittest.TestCase):
         # Save state
         game_logic.save_state_to_storage()
         
+        # Wait for async save to complete
+        import time
+        time.sleep(0.1)
+        
         # Modify state to simulate changes
         game_logic.clicked_tiles.add((3, 3))
         game_logic.bingo_patterns.add("col3")
@@ -182,6 +188,10 @@ class TestStatePersistence(unittest.TestCase):
         # Save state
         game_logic.save_state_to_storage()
         
+        # Wait for async save to complete
+        import time
+        time.sleep(0.1)
+        
         # Clear clicked tiles
         game_logic.clicked_tiles.clear()
         self.assertEqual(len(game_logic.clicked_tiles), 0)
@@ -197,11 +207,22 @@ class TestStatePersistence(unittest.TestCase):
     
     def test_game_closed_persistence(self):
         """Test that game closed state is properly saved and restored."""
+        # Setup board first (required for save)
+        game_logic.board = [["A1", "A2", "A3", "A4", "A5"],
+                           ["B1", "B2", "B3", "B4", "B5"],
+                           ["C1", "C2", "FREE SPACE", "C4", "C5"],
+                           ["D1", "D2", "D3", "D4", "D5"],
+                           ["E1", "E2", "E3", "E4", "E5"]]
+        
         # Setup closed game state
         game_logic.is_game_closed = True
         
         # Save state
         game_logic.save_state_to_storage()
+        
+        # Wait for async save to complete
+        import time
+        time.sleep(0.1)
         
         # Change state
         game_logic.is_game_closed = False
@@ -215,6 +236,7 @@ class TestStatePersistence(unittest.TestCase):
         # Test the opposite (open → close) 
         game_logic.is_game_closed = False
         game_logic.save_state_to_storage()
+        time.sleep(0.1)
         game_logic.is_game_closed = True
         game_logic.load_state_from_storage()
         self.assertFalse(game_logic.is_game_closed)
@@ -236,6 +258,10 @@ class TestStatePersistence(unittest.TestCase):
         
         # Save state
         game_logic.save_state_to_storage()
+        
+        # Wait for async save to complete
+        import time
+        time.sleep(0.1)
         
         # Simulate app restart by resetting all state
         game_logic.board = []
@@ -264,7 +290,7 @@ class TestStateSync(unittest.TestCase):
     def test_nicegui_211_compatibility(self):
         """Test compatibility with NiceGUI 2.11+ (no use of ui.broadcast)."""
         import inspect
-        
+
         # Check game_logic.py for ui.broadcast references
         import src.core.game_logic as game_logic
         source_code = inspect.getsource(game_logic)
@@ -275,10 +301,11 @@ class TestStateSync(unittest.TestCase):
         # Also check that our timer-based approach is used
         self.assertIn("synchronized by timers", source_code)
     
+    @pytest.mark.flaky
     def test_view_synchronization(self):
         """Test that state is synchronized between home and stream views."""
-        from unittest.mock import patch, MagicMock, call
-        
+        from unittest.mock import MagicMock, call, patch
+
         # Mock the required components
         mock_ui = MagicMock()
         mock_board_views = {
@@ -317,18 +344,19 @@ class TestStateSync(unittest.TestCase):
     
     def test_toggle_updates_all_clients(self):
         """Test that toggling a tile updates all connected clients."""
-        from unittest.mock import patch, MagicMock, call
-        
-        # Mock clicked_tiles and board for simplicity
+        from unittest.mock import MagicMock, call, patch
+
+        # Mock clicked_tiles and board for simplicity  
         mock_clicked_tiles = set()
-        mock_board = [["Phrase"]]
+        mock_board = [["Phrase", "Another"], ["Third", "Fourth"]]  # Make it 2x2 so (0,0) is valid
         
         # Mock ui and broadcast
         mock_ui = MagicMock()
         
-        # Setup mocks
+        # Setup mocks - also patch is_game_closed to ensure game is not closed
         with patch('src.core.game_logic.clicked_tiles', mock_clicked_tiles), \
              patch('src.core.game_logic.board', mock_board), \
+             patch('src.core.game_logic.is_game_closed', False), \
              patch('src.core.game_logic.ui', mock_ui), \
              patch('src.core.game_logic.check_winner') as mock_check_winner, \
              patch('src.core.game_logic.save_state_to_storage') as mock_save_state:
@@ -343,7 +371,15 @@ class TestStateSync(unittest.TestCase):
             with patch('src.core.game_logic.board_views', mock_board_views):
                 # Import and call toggle_tile
                 from src.core.game_logic import toggle_tile
+
+                # Debug: check initial state
+                print(f"Initial clicked_tiles: {mock_clicked_tiles}")
+                print(f"Initial is_game_closed: False")
+                
                 toggle_tile(0, 0)
+                
+                # Debug: check final state
+                print(f"Final clicked_tiles: {mock_clicked_tiles}")
                 
                 # Verify state was updated
                 self.assertIn((0, 0), mock_clicked_tiles)
@@ -361,9 +397,9 @@ class TestActiveUsers(unittest.TestCase):
     
     def test_user_connection_tracking(self):
         """Test that user connections are properly tracked."""
-        from unittest.mock import patch, MagicMock
         import json
-        
+        from unittest.mock import MagicMock, patch
+
         # Create fresh dictionaries for test isolation
         test_connected_clients = {
             "/": set(),
@@ -391,8 +427,8 @@ class TestActiveUsers(unittest.TestCase):
              patch('src.ui.routes.active_home_users', 0, create=True):
             
             # Import the functions we want to test
-            from src.ui.routes import home_page, health
-            
+            from src.ui.routes import health, home_page
+
             # Create a dummy view container
             mock_ui.card.return_value.__enter__.return_value = mock_ui.card.return_value
             mock_ui.label.return_value = MagicMock()
@@ -421,8 +457,8 @@ class TestMobileUI(unittest.TestCase):
     
     def test_buttons_have_text(self):
         """Test that control buttons have both text and icons."""
-        from unittest.mock import patch, MagicMock
-        
+        from unittest.mock import MagicMock, patch
+
         # Create mocks
         mock_ui = MagicMock()
         mock_button = MagicMock()

@@ -3,12 +3,12 @@ Core game logic for the Bingo application.
 """
 
 import datetime
+import json
 import logging
 import random
-import json
-from typing import List, Optional, Set, Dict, Any, Tuple, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
-from nicegui import ui, app
+from nicegui import app, ui
 
 from src.config.constants import (
     CLOSED_HEADER_TEXT,
@@ -93,10 +93,15 @@ def toggle_tile(row: int, col: int) -> None:
     """
     global clicked_tiles
 
+    # Don't allow toggling when game is closed
+    if is_game_closed:
+        return
+
     # Don't allow toggling the free space
     if (row, col) == (2, 2):
         return
 
+    # Update global state first (for backward compatibility with tests)
     key: Coordinate = (row, col)
     if key in clicked_tiles:
         clicked_tiles.remove(key)
@@ -404,34 +409,45 @@ def reopen_game() -> None:
 
 def save_state_to_storage() -> bool:
     """
-    Save the current game state to app.storage.general for persistence
-    across application restarts.
+    Save the current game state using the StateManager for server-side persistence.
+    This is a synchronous wrapper that schedules async operations.
     
     Returns:
         bool: True if state was saved successfully, False otherwise
     """
     try:
-        if not hasattr(app, 'storage') or not hasattr(app.storage, 'general'):
-            logging.warning("app.storage.general not available")
-            return False
+        import asyncio
+
+        from src.core.state_manager import GameState, get_state_manager
         
-        # Convert non-JSON-serializable types to serializable equivalents
-        clicked_tiles_list = list(tuple(coord) for coord in clicked_tiles)
-        bingo_patterns_list = list(bingo_patterns)
+        state_manager = get_state_manager()
         
-        # Prepare state dictionary
-        state = {
-            'board': board,
-            'clicked_tiles': clicked_tiles_list,
-            'bingo_patterns': bingo_patterns_list,
-            'board_iteration': board_iteration,
-            'is_game_closed': is_game_closed,
-            'today_seed': today_seed
-        }
+        # Create a complete async function to update state
+        async def update_state():
+            # Update the board and basic info
+            await state_manager.update_board(board, board_iteration, today_seed)
+            
+            # Manually update the state manager's internal state
+            # This is necessary because we need to sync the clicked tiles and patterns
+            async with state_manager._lock:
+                state_manager._state.clicked_tiles = clicked_tiles.copy()
+                state_manager._state.bingo_patterns = bingo_patterns.copy()
+                state_manager._state.is_game_closed = is_game_closed
+                state_manager._state.header_text = CLOSED_HEADER_TEXT if is_game_closed else HEADER_TEXT
+            
+            # Save the state
+            await state_manager.save_state(immediate=True)
         
-        # Save to storage
-        app.storage.general['game_state'] = state
-        logging.debug("Game state saved to persistent storage")
+        # Schedule the async operation
+        try:
+            # If we're in an event loop, create a task
+            loop = asyncio.get_running_loop()
+            asyncio.create_task(update_state())
+        except RuntimeError:
+            # Not in an event loop, run it directly
+            asyncio.run(update_state())
+        
+        logging.debug("Game state saved to server-side storage")
         return True
     except Exception as e:
         logging.error(f"Error saving state to storage: {e}")
@@ -440,7 +456,7 @@ def save_state_to_storage() -> bool:
 
 def load_state_from_storage() -> bool:
     """
-    Load game state from app.storage.general if available.
+    Load game state from the StateManager (server-side storage).
     
     Returns:
         bool: True if state was loaded successfully, False otherwise
@@ -448,31 +464,32 @@ def load_state_from_storage() -> bool:
     global board, clicked_tiles, bingo_patterns, board_iteration, is_game_closed, today_seed
     
     try:
-        if not hasattr(app, 'storage') or not hasattr(app.storage, 'general'):
-            logging.warning("app.storage.general not available")
+        from pathlib import Path
+
+        from src.core.state_manager import GameStateManager
+
+        # Force reload from file by creating new instance
+        state_file = Path("game_state.json")
+        if not state_file.exists():
+            logging.debug("No state file found")
+            return False
+            
+        state_manager = GameStateManager()
+        
+        # Check if state manager has valid board data
+        if not state_manager.board:
+            logging.debug("No saved game state found in server storage")
             return False
         
-        if 'game_state' not in app.storage.general:
-            logging.debug("No saved game state found in storage")
-            return False
+        # Load state from state manager
+        board = state_manager.board
+        clicked_tiles = state_manager.clicked_tiles
+        bingo_patterns = state_manager.bingo_patterns
+        board_iteration = state_manager.board_iteration
+        is_game_closed = state_manager.is_game_closed
+        today_seed = state_manager.today_seed
         
-        state = app.storage.general['game_state']
-        
-        # Load board
-        board = state['board']
-        
-        # Convert clicked_tiles from list back to set
-        clicked_tiles = set(tuple(coord) for coord in state['clicked_tiles'])
-        
-        # Convert bingo_patterns from list back to set
-        bingo_patterns = set(state['bingo_patterns'])
-        
-        # Load other state variables
-        board_iteration = state['board_iteration']
-        is_game_closed = state['is_game_closed']
-        today_seed = state['today_seed']
-        
-        logging.debug("Game state loaded from persistent storage")
+        logging.debug("Game state loaded from server-side storage")
         return True
     except Exception as e:
         logging.error(f"Error loading state from storage: {e}")

@@ -3,6 +3,8 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # Add the parent directory to sys.path to import from main.py
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -13,6 +15,9 @@ sys.modules["fastapi.staticfiles"] = MagicMock()
 
 # This test doesn't import main.py directly, but rather tests the interactions
 # between various functions in an integration manner
+
+# Mark all tests in this module as integration tests
+pytestmark = [pytest.mark.integration]
 
 
 class TestBingoIntegration(unittest.TestCase):

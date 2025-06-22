@@ -159,7 +159,13 @@ def create_board_view(background_color: str, is_global: bool) -> None:
     """
     import logging
 
-    from src.core.game_logic import board, board_views, clicked_tiles, toggle_tile
+    from src.core.game_logic import (
+        board,
+        board_views,
+        clicked_tiles,
+        is_game_closed,
+        toggle_tile,
+    )
     from src.ui.head import setup_head
     from src.utils.file_monitor import check_phrases_file_change
 
@@ -216,6 +222,11 @@ def create_board_view(background_color: str, is_global: bool) -> None:
 
     else:
         # Build the stream view (no controls)
-        local_tile_buttons: TileButtonsDict = {}
-        build_board(container, local_tile_buttons, toggle_tile, board, clicked_tiles)
-        board_views["stream"] = (container, local_tile_buttons)
+        # Check if game is closed before building the board
+        if is_game_closed:
+            build_closed_message(container)
+            board_views["stream"] = (container, {})  # Empty tiles dict since no board
+        else:
+            local_tile_buttons: TileButtonsDict = {}
+            build_board(container, local_tile_buttons, toggle_tile, board, clicked_tiles)
+            board_views["stream"] = (container, local_tile_buttons)

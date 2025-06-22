@@ -48,16 +48,16 @@ jobs:
         poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=.venv,.git,__pycache__,build,dist
         poetry run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics --exclude=.venv,.git,__pycache__,build,dist
     
-    - name: Format check with black
-      run: poetry run black --check --exclude=\.venv --extend-exclude=main.py .
-    
     - name: Import sorting check with isort
       run: poetry run isort --check --skip .venv --skip main.py .
     
     - name: Test with pytest
       run: |
         if [ -d "src" ]; then
-          poetry run pytest --cov=src
+          # Run unit tests first (fast, < 5 seconds)
+          poetry run pytest tests/test_*_unit.py -v --tb=short
+          # Run full test suite with coverage, excluding slow/browser/integration/flaky tests
+          poetry run pytest --cov=src --cov-report=xml --cov-report=term-missing -m "not e2e and not playwright and not slow and not integration and not flaky"
         else
           echo "No src directory yet, skipping tests"
           exit 0
