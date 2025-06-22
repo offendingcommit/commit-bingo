@@ -19,25 +19,11 @@ class TestStatePersistence(unittest.TestCase):
 
     def setUp(self):
         """Set up test environment."""
-        # Create mock app with storage.general
-        self.mock_app = MagicMock()
-        self.mock_storage = MagicMock()
-        self.mock_general = {}
-        
-        # Set up the mock structure
-        self.mock_app.storage = self.mock_storage
-        self.mock_storage.general = self.mock_general
-        
-        # Patch both app and the entire app module
-        self.app_patcher = patch('src.core.game_logic.app', self.mock_app)
-        self.app_patcher.start()
-        
-        # Set up initial game state with some sample data
-        phrases = ["Item 1", "Item 2", "Item 3", "Item 4", "Item 5", 
-                  "Item 6", "Item 7", "Item 8", "Item 9", "Item 10",
-                  "Item 11", "Item 12", "Item 13", "Item 14", "Item 15",
-                  "Item 16", "Item 17", "Item 18", "Item 19", "Item 20",
-                  "Item 21", "Item 22", "Item 23", "Item 24", "Item 25"]
+        # Clean up any existing state file
+        from pathlib import Path
+        self.state_file = Path("game_state.json")
+        if self.state_file.exists():
+            self.state_file.unlink()
         
         # Reset game logic state
         game_logic.board = []
@@ -49,8 +35,9 @@ class TestStatePersistence(unittest.TestCase):
 
     def tearDown(self):
         """Clean up after tests."""
-        # Stop patcher
-        self.app_patcher.stop()
+        # Clean up state file
+        if self.state_file.exists():
+            self.state_file.unlink()
 
     def test_state_serialization(self):
         """Test that game state can be serialized to JSON."""
@@ -69,10 +56,17 @@ class TestStatePersistence(unittest.TestCase):
         # Call the function
         result = game_logic.save_state_to_storage()
         
+        # Wait for async save
+        import time
+        time.sleep(0.1)
+        
         # Verify
         self.assertTrue(result)
-        self.assertIn('game_state', self.mock_general)
-        state = self.mock_general['game_state']
+        self.assertTrue(self.state_file.exists())
+        
+        # Load and check the saved state
+        with open(self.state_file, 'r') as f:
+            state = json.load(f)
         
         # Check that all state variables were serialized
         self.assertEqual(state['board'], game_logic.board)
@@ -88,19 +82,24 @@ class TestStatePersistence(unittest.TestCase):
 
     def test_state_deserialization(self):
         """Test that game state can be deserialized from JSON."""
-        # Setup mock storage with test data
-        self.mock_general['game_state'] = {
+        # Create test state file
+        test_state = {
             'board': [["A1", "A2", "A3", "A4", "A5"],
                       ["B1", "B2", "B3", "B4", "B5"],
                       ["C1", "C2", "FREE SPACE", "C4", "C5"],
                       ["D1", "D2", "D3", "D4", "D5"],
                       ["E1", "E2", "E3", "E4", "E5"]],
-            'clicked_tiles': [(0, 0), (1, 1), (2, 2)],
+            'clicked_tiles': [[0, 0], [1, 1], [2, 2]],
             'bingo_patterns': ["row0", "col1"],
             'board_iteration': 5,
             'is_game_closed': True,
-            'today_seed': "20250101.5"
+            'today_seed': "20250101.5",
+            'header_text': "Test Header",
+            'timestamp': 1234567890
         }
+        
+        with open(self.state_file, 'w') as f:
+            json.dump(test_state, f)
         
         # Reset game state to ensure it's loaded from storage
         game_logic.board = []
@@ -150,6 +149,10 @@ class TestStatePersistence(unittest.TestCase):
         # Save state
         game_logic.save_state_to_storage()
         
+        # Wait for async save to complete
+        import time
+        time.sleep(0.1)
+        
         # Modify state to simulate changes
         game_logic.clicked_tiles.add((3, 3))
         game_logic.bingo_patterns.add("col3")
@@ -182,6 +185,10 @@ class TestStatePersistence(unittest.TestCase):
         # Save state
         game_logic.save_state_to_storage()
         
+        # Wait for async save to complete
+        import time
+        time.sleep(0.1)
+        
         # Clear clicked tiles
         game_logic.clicked_tiles.clear()
         self.assertEqual(len(game_logic.clicked_tiles), 0)
@@ -197,11 +204,22 @@ class TestStatePersistence(unittest.TestCase):
     
     def test_game_closed_persistence(self):
         """Test that game closed state is properly saved and restored."""
+        # Setup board first (required for save)
+        game_logic.board = [["A1", "A2", "A3", "A4", "A5"],
+                           ["B1", "B2", "B3", "B4", "B5"],
+                           ["C1", "C2", "FREE SPACE", "C4", "C5"],
+                           ["D1", "D2", "D3", "D4", "D5"],
+                           ["E1", "E2", "E3", "E4", "E5"]]
+        
         # Setup closed game state
         game_logic.is_game_closed = True
         
         # Save state
         game_logic.save_state_to_storage()
+        
+        # Wait for async save to complete
+        import time
+        time.sleep(0.1)
         
         # Change state
         game_logic.is_game_closed = False
@@ -215,6 +233,7 @@ class TestStatePersistence(unittest.TestCase):
         # Test the opposite (open → close) 
         game_logic.is_game_closed = False
         game_logic.save_state_to_storage()
+        time.sleep(0.1)
         game_logic.is_game_closed = True
         game_logic.load_state_from_storage()
         self.assertFalse(game_logic.is_game_closed)
@@ -236,6 +255,10 @@ class TestStatePersistence(unittest.TestCase):
         
         # Save state
         game_logic.save_state_to_storage()
+        
+        # Wait for async save to complete
+        import time
+        time.sleep(0.1)
         
         # Simulate app restart by resetting all state
         game_logic.board = []

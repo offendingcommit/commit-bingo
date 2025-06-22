@@ -22,6 +22,9 @@ black = "^24.2.0"
 isort = "^5.13.2"
 python-semantic-release = "^9.1.1"
 mypy = "^1.15.0"
+pytest-bdd = "^8.1.0"
+pytest-asyncio = "<1.0"
+playwright = "^1.52.0"
 
 [build-system]
 requires = ["poetry-core>=1.8"]
