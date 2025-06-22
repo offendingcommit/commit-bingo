@@ -8,7 +8,7 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Lock
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from src.core import game_logic
 

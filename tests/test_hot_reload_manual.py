@@ -3,8 +3,8 @@ Manual test for hot reload persistence.
 This script demonstrates that state persists across page reloads.
 """
 
-import time
 import json
+import time
 from pathlib import Path
 
 

@@ -3,12 +3,12 @@ Core game logic for the Bingo application.
 """
 
 import datetime
+import json
 import logging
 import random
-import json
-from typing import List, Optional, Set, Dict, Any, Tuple, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
-from nicegui import ui, app
+from nicegui import app, ui
 
 from src.config.constants import (
     CLOSED_HEADER_TEXT,
@@ -415,8 +415,9 @@ def save_state_to_storage() -> bool:
         bool: True if state was saved successfully, False otherwise
     """
     try:
-        from src.core.state_manager import get_state_manager, GameState
         import asyncio
+
+        from src.core.state_manager import GameState, get_state_manager
         
         state_manager = get_state_manager()
         
@@ -462,9 +463,10 @@ def load_state_from_storage() -> bool:
     global board, clicked_tiles, bingo_patterns, board_iteration, is_game_closed, today_seed
     
     try:
-        from src.core.state_manager import GameStateManager
         from pathlib import Path
-        
+
+        from src.core.state_manager import GameStateManager
+
         # Force reload from file by creating new instance
         state_file = Path("game_state.json")
         if not state_file.exists():

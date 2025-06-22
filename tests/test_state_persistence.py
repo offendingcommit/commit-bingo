@@ -2,16 +2,17 @@
 Tests for state persistence functionality.
 """
 
-import unittest
-from unittest.mock import patch, MagicMock
 import json
 import random
+import unittest
+from unittest.mock import MagicMock, patch
+
+from src.core import game_logic
+from src.utils.file_operations import read_phrases_file
 
 # Don't import nicegui directly since we'll mock it
 # from nicegui import app
 
-from src.core import game_logic
-from src.utils.file_operations import read_phrases_file
 
 
 class TestStatePersistence(unittest.TestCase):
@@ -287,7 +288,7 @@ class TestStateSync(unittest.TestCase):
     def test_nicegui_211_compatibility(self):
         """Test compatibility with NiceGUI 2.11+ (no use of ui.broadcast)."""
         import inspect
-        
+
         # Check game_logic.py for ui.broadcast references
         import src.core.game_logic as game_logic
         source_code = inspect.getsource(game_logic)
@@ -300,8 +301,8 @@ class TestStateSync(unittest.TestCase):
     
     def test_view_synchronization(self):
         """Test that state is synchronized between home and stream views."""
-        from unittest.mock import patch, MagicMock, call
-        
+        from unittest.mock import MagicMock, call, patch
+
         # Mock the required components
         mock_ui = MagicMock()
         mock_board_views = {
@@ -340,8 +341,8 @@ class TestStateSync(unittest.TestCase):
     
     def test_toggle_updates_all_clients(self):
         """Test that toggling a tile updates all connected clients."""
-        from unittest.mock import patch, MagicMock, call
-        
+        from unittest.mock import MagicMock, call, patch
+
         # Mock clicked_tiles and board for simplicity
         mock_clicked_tiles = set()
         mock_board = [["Phrase"]]
@@ -384,9 +385,9 @@ class TestActiveUsers(unittest.TestCase):
     
     def test_user_connection_tracking(self):
         """Test that user connections are properly tracked."""
-        from unittest.mock import patch, MagicMock
         import json
-        
+        from unittest.mock import MagicMock, patch
+
         # Create fresh dictionaries for test isolation
         test_connected_clients = {
             "/": set(),
@@ -414,8 +415,8 @@ class TestActiveUsers(unittest.TestCase):
              patch('src.ui.routes.active_home_users', 0, create=True):
             
             # Import the functions we want to test
-            from src.ui.routes import home_page, health
-            
+            from src.ui.routes import health, home_page
+
             # Create a dummy view container
             mock_ui.card.return_value.__enter__.return_value = mock_ui.card.return_value
             mock_ui.label.return_value = MagicMock()
@@ -444,8 +445,8 @@ class TestMobileUI(unittest.TestCase):
     
     def test_buttons_have_text(self):
         """Test that control buttons have both text and icons."""
-        from unittest.mock import patch, MagicMock
-        
+        from unittest.mock import MagicMock, patch
+
         # Create mocks
         mock_ui = MagicMock()
         mock_button = MagicMock()

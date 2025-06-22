@@ -159,7 +159,13 @@ def create_board_view(background_color: str, is_global: bool) -> None:
     """
     import logging
 
-    from src.core.game_logic import board, board_views, clicked_tiles, is_game_closed, toggle_tile
+    from src.core.game_logic import (
+        board,
+        board_views,
+        clicked_tiles,
+        is_game_closed,
+        toggle_tile,
+    )
     from src.ui.head import setup_head
     from src.utils.file_monitor import check_phrases_file_change
 

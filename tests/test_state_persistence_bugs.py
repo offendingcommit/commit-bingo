@@ -3,12 +3,14 @@ Tests that reproduce state persistence bugs during app restarts.
 These tests are expected to FAIL until we fix the underlying issues.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, MagicMock
+
 # Mock nicegui imports
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
 sys.modules['nicegui'] = MagicMock()
 sys.modules['nicegui.app'] = MagicMock()
 sys.modules['nicegui.ui'] = MagicMock()
@@ -23,7 +25,7 @@ class TestStatePersistenceBugs:
     def setup_method(self):
         """Set up test environment."""
         from pathlib import Path
-        
+
         # Clean up state file
         self.state_file = Path("game_state.json")
         if self.state_file.exists():
@@ -45,7 +47,7 @@ class TestStatePersistenceBugs:
     def test_state_not_restored_after_hot_reload(self):
         """Test that state is properly restored after hot reload with StateManager."""
         import time
-        
+
         # Arrange: Set up game state
         phrases = read_phrases_file()
         game_logic.generate_board(1, phrases)
@@ -74,7 +76,7 @@ class TestStatePersistenceBugs:
     def test_storage_persistence_across_app_restart(self):
         """Test that storage persists across app restart with StateManager."""
         import time
-        
+
         # Arrange: Save some state
         phrases = read_phrases_file()
         game_logic.generate_board(1, phrases)
@@ -130,9 +132,9 @@ class TestStatePersistenceBugs:
     
     def test_state_corruption_on_partial_write(self):
         """Test that StateManager handles corrupted state files gracefully."""
-        import time
         import json
-        
+        import time
+
         # Arrange: Set up state
         phrases = read_phrases_file()
         game_logic.generate_board(1, phrases)
@@ -158,7 +160,7 @@ class TestStatePersistenceBugs:
     def test_init_app_called_multiple_times(self):
         """Test that state persists when app is reinitialized."""
         import time
-        
+
         # Arrange: Set up initial state
         phrases = read_phrases_file()
         game_logic.generate_board(1, phrases)
@@ -187,7 +189,7 @@ class TestBDDStyleStatePersistence:
     def setup_method(self):
         """Given I have a bingo game in progress."""
         from pathlib import Path
-        
+
         # Clean up state file
         self.state_file = Path("game_state.json")
         if self.state_file.exists():
@@ -214,7 +216,7 @@ class TestBDDStyleStatePersistence:
         Scenario: State persists through graceful restart
         """
         import time
-        
+
         # Given I have clicked tiles at positions (0,1), (2,3), and (4,4)
         positions = [(0, 1), (2, 3), (4, 4)]
         for row, col in positions:
@@ -244,7 +246,7 @@ class TestBDDStyleStatePersistence:
         Scenario: State persists when code changes trigger reload
         """
         import time
-        
+
         # Given I have a game in progress
         game_logic.toggle_tile(1, 1)
         game_logic.toggle_tile(2, 2)

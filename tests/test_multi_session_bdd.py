@@ -5,14 +5,13 @@ BDD tests for multi-session concurrent access scenarios.
 import json
 import time
 from pathlib import Path
-from threading import Thread, Lock
-from unittest.mock import patch, MagicMock
+from threading import Lock, Thread
+from unittest.mock import MagicMock, patch
 
 import pytest
-from pytest_bdd import scenarios, given, when, then, parsers
+from pytest_bdd import given, parsers, scenarios, then, when
 
 from src.core import game_logic
-
 
 # Load scenarios from feature file
 scenarios('features/multi_session_concurrent.feature')

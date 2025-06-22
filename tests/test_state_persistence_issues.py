@@ -3,12 +3,13 @@ Comprehensive tests showing all state persistence issues.
 These tests are designed to FAIL and demonstrate the problems.
 """
 
-import pytest
-import json
 import asyncio
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, PropertyMock
+import json
 import time
+from pathlib import Path
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
+
+import pytest
 
 
 class TestCurrentArchitectureIssues:
@@ -28,7 +29,7 @@ class TestCurrentArchitectureIssues:
         
         # Import after patching and reset all state
         import src.core.game_logic as game_logic
-        
+
         # Reset all module-level variables
         game_logic.board = []
         game_logic.clicked_tiles = set()
@@ -52,9 +53,10 @@ class TestCurrentArchitectureIssues:
         - Shared across all clients
         - Persists across server restarts
         """
-        from src.core.game_logic import save_state_to_storage, toggle_tile
         import time
-        
+
+        from src.core.game_logic import save_state_to_storage, toggle_tile
+
         # Clean up any existing state file
         state_file = Path("game_state.json")
         if state_file.exists():
@@ -92,7 +94,7 @@ class TestCurrentArchitectureIssues:
         """
         # Simulate app startup sequence
         from app import init_app
-        
+
         # At startup, storage doesn't exist yet
         self.mock_app.storage = None
         
@@ -116,10 +118,13 @@ class TestCurrentArchitectureIssues:
         which resets all module-level variables.
         """
         from src.core.game_logic import (
-            board, clicked_tiles, toggle_tile, 
-            save_state_to_storage, load_state_from_storage
+            board,
+            clicked_tiles,
+            load_state_from_storage,
+            save_state_to_storage,
+            toggle_tile,
         )
-        
+
         # Set up game state
         from src.utils.file_operations import read_phrases_file
         phrases = read_phrases_file()
@@ -153,8 +158,12 @@ class TestCurrentArchitectureIssues:
         
         Multiple users clicking simultaneously can cause race conditions.
         """
-        from src.core.game_logic import toggle_tile, save_state_to_storage, clicked_tiles
-        
+        from src.core.game_logic import (
+            clicked_tiles,
+            save_state_to_storage,
+            toggle_tile,
+        )
+
         # Reset state
         clicked_tiles.clear()
         
@@ -184,8 +193,8 @@ class TestCurrentArchitectureIssues:
         Since storage is in-memory on the client side,
         server restarts lose all game state.
         """
-        from src.core.game_logic import toggle_tile, save_state_to_storage
-        
+        from src.core.game_logic import save_state_to_storage, toggle_tile
+
         # Game in progress
         toggle_tile(2, 2)
         save_state_to_storage()
@@ -203,8 +212,8 @@ class TestCurrentArchitectureIssues:
         The current implementation catches exceptions but doesn't
         properly handle corrupted data or serialization issues.
         """
-        from src.core.game_logic import save_state_to_storage, load_state_from_storage
-        
+        from src.core.game_logic import load_state_from_storage, save_state_to_storage
+
         # Inject corrupted data
         self.mock_storage['game_state'] = {
             'clicked_tiles': "not_a_list",  # Wrong type
@@ -254,7 +263,7 @@ class TestProposedSolutions:
         
         Save state to a JSON file on the server, not in client storage.
         """
-        from src.core.game_logic import clicked_tiles, board, is_game_closed
+        from src.core.game_logic import board, clicked_tiles, is_game_closed
         
         STATE_FILE = Path("game_state.json")
         
@@ -307,9 +316,9 @@ class TestProposedSolutions:
         
         try:
             # Test the solution
-            from src.core.game_logic import toggle_tile, generate_board
+            from src.core.game_logic import generate_board, toggle_tile
             from src.utils.file_operations import read_phrases_file
-            
+
             # Set up game
             phrases = read_phrases_file()
             generate_board(1, phrases)
@@ -372,7 +381,12 @@ class TestProposedSolutions:
         
         def save_to_db():
             """Save state to database."""
-            from src.core.game_logic import clicked_tiles, board, is_game_closed, board_iteration
+            from src.core.game_logic import (
+                board,
+                board_iteration,
+                clicked_tiles,
+                is_game_closed,
+            )
             
             state = {
                 'clicked_tiles': json.dumps(list(clicked_tiles)),
@@ -397,7 +411,7 @@ class TestProposedSolutions:
         
         def load_from_db():
             """Load state from database."""
-            from src.core.game_logic import clicked_tiles, board
+            from src.core.game_logic import board, clicked_tiles
             
             with closing(sqlite3.connect(DB_FILE)) as conn:
                 cursor = conn.execute(
@@ -424,9 +438,9 @@ class TestProposedSolutions:
             # Test SQLite solution
             init_db()
             
-            from src.core.game_logic import toggle_tile, generate_board
+            from src.core.game_logic import generate_board, toggle_tile
             from src.utils.file_operations import read_phrases_file
-            
+
             # Set up game
             phrases = read_phrases_file()
             generate_board(1, phrases)
@@ -436,7 +450,7 @@ class TestProposedSolutions:
             assert save_to_db()
             
             # Clear memory
-            from src.core.game_logic import clicked_tiles, board
+            from src.core.game_logic import board, clicked_tiles
             clicked_tiles.clear()
             board.clear()
             
@@ -461,7 +475,7 @@ class TestProposedSolutions:
         """
         import asyncio
         from dataclasses import dataclass, field
-        from typing import Set, List
+        from typing import List, Set
         
         @dataclass
         class GameState:

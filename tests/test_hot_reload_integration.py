@@ -3,13 +3,19 @@ Integration test for hot reload persistence using Playwright.
 This test verifies that game state persists when the app is reloaded.
 """
 
-import pytest
 import asyncio
 import json
 from pathlib import Path
+
+import pytest
 from playwright.async_api import async_playwright, expect
 
 
+@pytest.mark.e2e
+@pytest.mark.playwright
+@pytest.mark.slow
+@pytest.mark.persistence
+@pytest.mark.requires_app
 class TestHotReloadIntegration:
     """Integration tests for hot reload state persistence."""
     
@@ -30,16 +36,16 @@ class TestHotReloadIntegration:
                 initial_tiles = await page.locator("[style*='cursor: pointer']").count()
                 assert initial_tiles >= 25, f"Should have at least 25 tiles, got {initial_tiles}"
                 
-                # Click some tiles
-                tiles_to_click = [
-                    "THREATEN GOOD TIME",
-                    "SAYS VEL", 
-                    "HOW'S MY AUDIO"
-                ]
+                # Get the actual tile texts from the page to click the first few
+                # Since tiles might have text split across multiple elements, 
+                # we'll click by index position instead
+                tile_elements = await page.locator("[style*='cursor: pointer']").all()
                 
-                for tile_text in tiles_to_click:
-                    # Click on the tile container
-                    await page.locator(f"[style*='cursor: pointer']").filter(has_text=tile_text).first.click()
+                # Click tiles at specific indices (avoiding the center FREE MEAT tile at index 12)
+                tiles_to_click_indices = [0, 1, 5]  # Top-left, second in first row, first in second row
+                
+                for index in tiles_to_click_indices:
+                    await tile_elements[index].click()
                     await asyncio.sleep(0.2)  # Wait for state save
                 
                 # Take screenshot before reload
@@ -76,14 +82,9 @@ class TestHotReloadIntegration:
                 restored_positions = set(tuple(pos) for pos in restored_state['clicked_tiles'])
                 assert clicked_positions == restored_positions, "Clicked tiles should be preserved"
                 
-                # Verify tiles are visually marked as clicked
-                # In the actual app, clicked tiles have different styling
-                # We can check for this by looking at the computed styles
-                for tile_text in tiles_to_click:
-                    tile = page.locator(f"text={tile_text}").first
-                    # The actual verification would depend on how the app styles clicked tiles
-                    # For now, we just verify the tiles exist
-                    assert await tile.is_visible(), f"Tile {tile_text} should be visible"
+                # Verify we have the expected number of tiles clicked
+                # Should be 3 tiles we clicked + 1 FREE MEAT tile = 4 total
+                assert len(restored_positions) == 4, f"Should have exactly 4 clicked tiles after reload, got {len(restored_positions)}"
                 
             finally:
                 await browser.close()

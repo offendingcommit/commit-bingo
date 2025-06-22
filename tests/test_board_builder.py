@@ -3,6 +3,8 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 # Add the parent directory to sys.path to import from src
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -10,11 +12,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 sys.modules["nicegui"] = MagicMock()
 sys.modules["nicegui.ui"] = MagicMock()
 
+from src.types.ui_types import TileButtonsDict
 from src.ui.board_builder import build_board, build_closed_message, create_board_view
 from src.ui.head import setup_head
-from src.types.ui_types import TileButtonsDict
 
 
+@pytest.mark.integration
+@pytest.mark.ui
 class TestBoardBuilder(unittest.TestCase):
     def setUp(self):
         # Setup common test data and mocks

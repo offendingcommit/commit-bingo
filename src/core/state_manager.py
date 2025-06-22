@@ -5,21 +5,18 @@ This module provides a centralized state manager that persists game state
 to the server's file system instead of relying on client-side storage.
 """
 
+import asyncio
 import json
 import logging
-import asyncio
-from pathlib import Path
-from typing import Set, List, Optional, Dict, Any, Tuple
-from dataclasses import dataclass, field
 import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from src.config.constants import FREE_SPACE_TEXT
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.types.ui_types import (
-        BoardType, ClickedTiles, BingoPatterns, Coordinate
-    )
+    from src.types.ui_types import BingoPatterns, BoardType, ClickedTiles, Coordinate
 else:
     # Define types locally to avoid circular imports in tests
     BoardType = List[List[str]]

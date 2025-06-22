@@ -1,14 +1,16 @@
 """BDD tests for state persistence using pytest-bdd."""
 
-import pytest
 import asyncio
 import json
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from pytest_bdd import given, when, then, scenario, parsers
 
 # Mock nicegui imports to avoid architecture issues
 import sys
+from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+from pytest_bdd import given, parsers, scenario, then, when
+
 sys.modules['nicegui'] = MagicMock()
 sys.modules['nicegui.app'] = MagicMock()
 sys.modules['nicegui.ui'] = MagicMock()
@@ -36,7 +38,7 @@ def clean_state():
 def game_state(clean_state):
     """Reset game state before each test."""
     import src.core.game_logic as game_logic
-    
+
     # Reset game state
     game_logic.board = []
     game_logic.clicked_tiles = set()
@@ -92,9 +94,10 @@ def test_graceful_restart():
 @when("the app restarts gracefully")
 def graceful_restart():
     """Simulate graceful restart."""
-    import src.core.game_logic as game_logic
     import time
-    
+
+    import src.core.game_logic as game_logic
+
     # Save current state
     game_logic.save_state_to_storage()
     
@@ -153,9 +156,10 @@ def test_unexpected_restart():
 @when("the app crashes and restarts")
 def crash_and_restart():
     """Simulate crash and restart."""
-    import src.core.game_logic as game_logic
     import time
-    
+
+    import src.core.game_logic as game_logic
+
     # Save state before crash
     game_logic.save_state_to_storage()
     
@@ -189,9 +193,10 @@ def modify_source_file():
 @when("NiceGUI triggers a hot reload")
 def trigger_hot_reload():
     """Simulate NiceGUI hot reload."""
-    import src.core.game_logic as game_logic
     import time
-    
+
+    import src.core.game_logic as game_logic
+
     # Save state before reload
     game_logic.save_state_to_storage()
     
@@ -254,8 +259,9 @@ def user_b_clicks_concurrent(position):
 @when("the app saves state")
 def app_saves_state():
     """App saves current state."""
-    import src.core.game_logic as game_logic
     import time
+
+    import src.core.game_logic as game_logic
     
     game_logic.save_state_to_storage()
     
