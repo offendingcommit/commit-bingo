@@ -55,7 +55,7 @@ def init_app():
         # Update state manager synchronously during initialization
         # We'll save to file after UI starts up
         import src.core.game_logic as game_logic
-        
+
         # Use NiceGUI's app.on_startup to save initial state after event loop starts
         @app.on_startup
         async def save_initial_state():
