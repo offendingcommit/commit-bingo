@@ -251,3 +251,80 @@ Common issues:
 - Not handling header updates across different views
 - Not checking if game is closed in sync_board_state
 - Ignoring exception handling for disconnected clients
+
+## State Persistence
+
+The application uses NiceGUI's `app.storage.general` for persistent state management:
+
+### Key Components
+- **Persistent Data**: Game state survives app restarts
+- **Serialization**: Handles conversion of Python types (sets → lists, tuples → lists)
+- **Auto-save**: State saved after every user action
+- **Load on Init**: State restored from storage when app starts
+
+### State Elements
+- `clicked_tiles`: Set of clicked (row, col) positions
+- `is_game_closed`: Boolean for game status
+- `header_text`: Current header message
+- `board_iteration`: Tracks board version
+- `bingo_patterns`: Winning patterns found
+
+### Key Functions
+- `save_state_to_storage()`: Serializes and saves current state
+- `load_state_from_storage()`: Loads and deserializes saved state
+- `toggle_tile()`: Updates tile state and triggers save
+- `close_game()`: Closes game and saves state
+- `reopen_game()`: Reopens game and saves state
+
+## View Synchronization
+
+The application maintains two synchronized views:
+
+### Views
+- **Root Path (`/`)**: Full interactive board with controls
+- **Stream Path (`/stream`)**: Read-only view for audiences
+
+### Synchronization Strategy
+- **Timer-based**: Uses 0.05 second interval timers
+- **NiceGUI 2.11+ Compatible**: Removed deprecated `ui.broadcast()`
+- **Automatic Updates**: UI changes propagate to all connected clients
+- **State Consistency**: Both views share same game state
+
+### User Tracking
+- Active connections tracked per path
+- Connection/disconnection handled gracefully
+- Health endpoint reports user counts
+- UI displays active user count
+
+## NiceGUI Framework Notes
+
+### Version Compatibility
+- Built for NiceGUI 2.11.0+
+- Uses `app.storage.general` for persistence
+- Timer-based synchronization pattern
+- No longer uses deprecated `ui.broadcast()`
+
+### Storage Best Practices
+```python
+# Store data
+app.storage.general['key'] = value
+
+# Retrieve with default
+value = app.storage.general.get('key', default_value)
+
+# Check existence
+if 'key' in app.storage.general:
+    # process
+```
+
+### UI Patterns
+- Buttons support text + icons for mobile
+- Use context managers for UI containers
+- Handle disconnected clients in try/except
+- Timer callbacks for periodic updates
+
+### Mobile Optimization
+- Touch targets: minimum 44x44 pixels
+- Descriptive text alongside icons
+- Responsive design classes
+- Clear visual feedback
