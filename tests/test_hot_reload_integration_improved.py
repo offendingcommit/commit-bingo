@@ -16,6 +16,8 @@ class TestHotReloadIntegrationImproved:
     """Integration tests for hot reload state persistence."""
     
     @pytest.mark.asyncio
+    @pytest.mark.playwright
+    @pytest.mark.e2e
     async def test_state_persistence_mechanism(self):
         """Test that the state persistence mechanism works correctly."""
         async with async_playwright() as p:
@@ -97,6 +99,8 @@ class TestHotReloadIntegrationImproved:
                 await browser.close()
     
     @pytest.mark.asyncio
+    @pytest.mark.playwright
+    @pytest.mark.e2e
     async def test_visual_state_restoration(self):
         """Test that clicked tiles visually appear clicked after reload."""
         async with async_playwright() as p:
@@ -141,6 +145,8 @@ class TestHotReloadIntegrationImproved:
                 await browser.close()
     
     @pytest.mark.asyncio
+    @pytest.mark.playwright
+    @pytest.mark.e2e
     async def test_multiple_sessions_share_state(self):
         """Test that multiple browser sessions see the same state."""
         async with async_playwright() as p:
