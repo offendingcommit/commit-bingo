@@ -371,7 +371,7 @@ class TestStateSync(unittest.TestCase):
             with patch('src.core.game_logic.board_views', mock_board_views):
                 # Import and call toggle_tile
                 from src.core.game_logic import toggle_tile
-                
+
                 # Debug: check initial state
                 print(f"Initial clicked_tiles: {mock_clicked_tiles}")
                 print(f"Initial is_game_closed: False")
