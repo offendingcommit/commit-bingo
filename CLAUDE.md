@@ -374,39 +374,152 @@ if 'key' in app.storage.general:
 - Responsive design classes
 - Clear visual feedback
 
-## MCP Tools Used
+## MCP Tools & Memory Management
 
-### For This Project
-When working on the Bingo project, the following MCP tools are particularly useful:
+### 🛑 STOP! SAVE TO MEMORY NOW - NOT LATER!
 
-1. **mcp-memory** (Long-term memory)
-   - `mcp__mcp-memory__searchMCPMemory`: Search for past solutions and patterns
-   - `mcp__mcp-memory__addToMCPMemory`: Save solutions and learnings
-   - Always prefix entries with "bingo:" for project isolation
+#### THROUGHOUT EVERY SESSION:
+- ✅ Just solved something? → SAVE NOW
+- ✅ Created a script? → SAVE NOW  
+- ✅ Fixed an error? → SAVE NOW
+- ✅ Made a decision? → SAVE NOW
+- ✅ Discovered a pattern? → SAVE NOW
 
-2. **context7** (Documentation lookup)
+**DON'T WAIT UNTIL THE END OF THE SESSION!**
+
+### Memory-First Protocol (CRITICAL)
+- **ALWAYS** search memory BEFORE starting any work: `mcp__mcp-memory__searchMCPMemory "bingo [topic]"`
+- **ALWAYS** save solutions after fixing issues: `mcp__mcp-memory__addToMCPMemory "bingo: Problem: X, Solution: Y"`
+- **Save context switches**: When interrupted or switching tasks, save current state
+- **Capture train of thought**: Document reasoning and decision paths
+
+### Memory Save Triggers (DO IMMEDIATELY)
+- After creating any script → Save its purpose and usage
+- After fixing any error → Save problem + solution  
+- After file reorganization → Save what moved where
+- After discovering pattern → Save the insight
+- After making decision → Save the rationale
+- After solving problem → Save approach + result
+
+### Session Start Protocol for Bingo
+```bash
+# 1. Restore context from last session
+mcp__mcp-memory__searchMCPMemory "bingo last session state"
+mcp__mcp-memory__searchMCPMemory "bingo open tasks TODO"
+mcp__mcp-memory__searchMCPMemory "Jonathan workflow guidelines best practices"
+
+# 2. Rebuild mental model
+tree . -I 'node_modules' -L 2
+cat CLAUDE.md
+
+# 3. Load comprehensive project memory
+mcp__mcp-memory__searchMCPMemory "bingo current state"
+mcp__mcp-memory__searchMCPMemory "bingo where I left off"
+mcp__mcp-memory__searchMCPMemory "bingo blockers questions"
+mcp__mcp-memory__searchMCPMemory "bingo solutions patterns"
+mcp__mcp-memory__searchMCPMemory "bingo nicegui patterns"
+mcp__mcp-memory__searchMCPMemory "bingo state persistence"
+mcp__mcp-memory__searchMCPMemory "bingo testing infrastructure"
+
+# 4. Check work state
+git status
+git diff
+git log --oneline -10
+gh pr list --assignee @me --state open
+```
+
+### MCP Tools Available
+
+1. **mcp-memory** (Always Active - External Brain)
+   - `mcp__mcp-memory__searchMCPMemory "[query]"` - Search stored knowledge
+   - `mcp__mcp-memory__addToMCPMemory "content"` - Save new knowledge
+   - Always prefix with "bingo:" for project isolation
+
+2. **sequentialthinking** - For complex reasoning (especially with Sonnet 4)
+   - Use for architectural decisions and complex debugging
+   - Saves reasoning process to memory automatically
+
+3. **context7** (Documentation lookup)
    - `mcp__context7__resolve-library-id`: Find library IDs (e.g., NiceGUI)
    - `mcp__context7__get-library-docs`: Get library documentation
-   - Used to research NiceGUI storage patterns
-
-3. **sequentialthinking** (Complex reasoning)
-   - `mcp__sequentialthinking__sequentialthinking`: Break down complex problems
-   - Useful for architectural decisions and debugging
 
 4. **serena** (Code intelligence)
-   - Activate with: `mcp__serena__activate_project`
+   - Activate with: `mcp__serena__activate_project "bingo"`
    - Provides symbol search, refactoring, and code analysis
-   - Manages project-specific memories
 
-### Example Usage
-```python
-# Search for past solutions
-mcp__mcp-memory__searchMCPMemory("bingo state persistence")
+### Memory Templates for Bingo Project
 
-# Save new solution
-mcp__mcp-memory__addToMCPMemory("bingo: Fixed state persistence using StateManager pattern...")
-
-# Get NiceGUI docs
-mcp__context7__resolve-library-id("nicegui")
-mcp__context7__get-library-docs("/zauberzeug/nicegui", "storage persistence")
+#### Error Solutions
 ```
+Project: bingo
+Error: [exact error message]
+Context: [NiceGUI version, test environment, etc.]
+Solution: [step-by-step fix]
+Code Before: [relevant code showing issue]
+Code After: [corrected code]
+Validation: [how verified it worked]
+Tags: bingo, error-fix, [component], [technology]
+```
+
+#### Testing Infrastructure
+```
+Project: bingo
+Component: [StateManager/UI/Testing]
+Issue: [what needed testing/fixing]
+Approach: [testing strategy used]
+Implementation: [specific test code/patterns]
+Results: [coverage/performance metrics]
+Patterns: [reusable testing patterns discovered]
+Tags: bingo, testing, [unit/integration/e2e], [component]
+```
+
+#### NiceGUI Specific Patterns
+```
+Project: bingo
+NiceGUI Pattern: [state management/UI/timers/etc.]
+Problem: [what was challenging]
+Solution: [NiceGUI-specific approach]
+Code Example: [working implementation]
+Gotchas: [things to watch out for]
+Performance: [any performance considerations]
+Tags: bingo, nicegui, [pattern-type], [version]
+```
+
+#### StateManager Architecture
+```
+Project: bingo
+Architecture Decision: [what was decided]
+Previous Approach: [old way - app.storage.general]
+New Approach: [StateManager pattern]
+Implementation: [key code/patterns]
+Benefits: [persistence, thread-safety, etc.]
+Testing Strategy: [how we verified it works]
+Tags: bingo, architecture, state-persistence, statemanager
+```
+
+### Common Search Patterns for Bingo
+```bash
+# Starting work
+mcp__mcp-memory__searchMCPMemory "bingo session startup protocol"
+mcp__mcp-memory__searchMCPMemory "bingo current priorities"
+
+# Debugging
+mcp__mcp-memory__searchMCPMemory "bingo [error-type] solutions"
+mcp__mcp-memory__searchMCPMemory "bingo nicegui [issue-type]"
+mcp__mcp-memory__searchMCPMemory "bingo testing [test-type] patterns"
+
+# Development
+mcp__mcp-memory__searchMCPMemory "bingo statemanager patterns"
+mcp__mcp-memory__searchMCPMemory "bingo ci optimization"
+mcp__mcp-memory__searchMCPMemory "bingo deployment troubleshooting"
+```
+
+### What to Save for Bingo (SAVE IMMEDIATELY)
+- **Every StateManager fix/enhancement** with before/after code
+- **NiceGUI UI patterns** that work well for this app
+- **Testing strategies** that prove effective (unit/integration/e2e)
+- **CI/CD optimizations** and performance improvements
+- **Docker/Helm deployment issues** and their solutions
+- **Performance bottlenecks** and optimization approaches
+- **User experience improvements** and their impact
+- **Architecture decisions** with reasoning and alternatives considered

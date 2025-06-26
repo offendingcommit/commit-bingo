@@ -21,73 +21,73 @@ class TestHotReloadIntegration:
     
     @pytest.mark.asyncio
     async def test_state_persists_on_page_reload(self):
-        """Test that game state persists when page is reloaded."""
-        async with async_playwright() as p:
-            # Launch browser
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            
-            try:
-                # Navigate to the app
-                await page.goto("http://localhost:8080")
-                await page.wait_for_load_state("networkidle")
+            """Test that game state persists when page is reloaded."""
+            async with async_playwright() as p:
+                # Launch browser
+                browser = await p.chromium.launch(headless=True)
+                page = await browser.new_page()
                 
-                # Get initial board state - count clickable tile divs
-                initial_tiles = await page.locator("[style*='cursor: pointer']").count()
-                assert initial_tiles >= 25, f"Should have at least 25 tiles, got {initial_tiles}"
-                
-                # Get the actual tile texts from the page to click the first few
-                # Since tiles might have text split across multiple elements, 
-                # we'll click by index position instead
-                tile_elements = await page.locator("[style*='cursor: pointer']").all()
-                
-                # Click tiles at specific indices (avoiding the center FREE MEAT tile at index 12)
-                tiles_to_click_indices = [0, 1, 5]  # Top-left, second in first row, first in second row
-                
-                for index in tiles_to_click_indices:
-                    await tile_elements[index].click()
-                    await asyncio.sleep(0.2)  # Wait for state save
-                
-                # Take screenshot before reload
-                await page.screenshot(path="before_reload.png")
-                
-                # Check state file exists and has correct data
-                state_file = Path("game_state.json")
-                assert state_file.exists(), "State file should exist"
-                
-                with open(state_file, 'r') as f:
-                    state = json.load(f)
-                
-                # Verify clicked tiles are saved (including FREE MEAT)
-                assert len(state['clicked_tiles']) >= 4, f"Should have at least 4 clicked tiles, got {len(state['clicked_tiles'])}"
-                
-                # Store clicked positions for verification
-                clicked_positions = set(tuple(pos) for pos in state['clicked_tiles'])
-                
-                # Reload the page
-                await page.reload()
-                await page.wait_for_load_state("networkidle")
-                
-                # Take screenshot after reload
-                await page.screenshot(path="after_reload.png")
-                
-                # Verify the board is restored
-                restored_tiles = await page.locator("[style*='cursor: pointer']").count()
-                assert restored_tiles >= 25, f"Should still have at least 25 tiles after reload, got {restored_tiles}"
-                
-                # Read state file again to verify it still has the same data
-                with open(state_file, 'r') as f:
-                    restored_state = json.load(f)
-                
-                restored_positions = set(tuple(pos) for pos in restored_state['clicked_tiles'])
-                assert clicked_positions == restored_positions, "Clicked tiles should be preserved"
-                
-                # Verify we have the expected number of tiles clicked
-                # Should be 3 tiles we clicked + 1 FREE MEAT tile = 4 total
-                assert len(restored_positions) == 4, f"Should have exactly 4 clicked tiles after reload, got {len(restored_positions)}"
-                
-            finally:
-                await browser.close()
+                try:
+                    # Navigate to the app
+                    await page.goto("http://localhost:8080")
+                    await page.wait_for_load_state("networkidle")
+                    
+                    # Get all clickable tiles
+                    tiles = await page.locator("[style*='cursor: pointer']").all()
+                    assert len(tiles) == 25, f"Should have exactly 25 tiles, got {len(tiles)}"
+                    
+                    # Click tiles by position (avoiding FREE MEAT at position 12)
+                    # Map positions to board coordinates for verification
+                    tiles_to_click = [
+                        0,   # (0,0) - top-left
+                        4,   # (0,4) - top-right
+                        6,   # (1,1) - second row, second col
+                    ]
+                    
+                    for tile_index in tiles_to_click:
+                        await tiles[tile_index].click()
+                        await asyncio.sleep(0.2)  # Wait for state save
+                    
+                    # Take screenshot before reload
+                    await page.screenshot(path="before_reload.png")
+                    
+                    # Check state file exists and has correct data
+                    state_file = Path("game_state.json")
+                    assert state_file.exists(), "State file should exist"
+                    
+                    with open(state_file, 'r') as f:
+                        state = json.load(f)
+                    
+                    # Verify clicked tiles are saved (our 3 clicks + FREE MEAT)
+                    assert len(state['clicked_tiles']) == 4, f"Should have 4 clicked tiles, got {len(state['clicked_tiles'])}"
+                    
+                    # Store clicked positions for verification
+                    clicked_positions = set(tuple(pos) for pos in state['clicked_tiles'])
+                    
+                    # Reload the page
+                    await page.reload()
+                    await page.wait_for_load_state("networkidle")
+                    
+                    # Take screenshot after reload
+                    await page.screenshot(path="after_reload.png")
+                    
+                    # Verify the board is restored
+                    restored_tiles = await page.locator("[style*='cursor: pointer']").all()
+                    assert len(restored_tiles) == 25, f"Should still have 25 tiles after reload, got {len(restored_tiles)}"
+                    
+                    # Read state file again to verify it still has the same data
+                    with open(state_file, 'r') as f:
+                        restored_state = json.load(f)
+                    
+                    restored_positions = set(tuple(pos) for pos in restored_state['clicked_tiles'])
+                    assert clicked_positions == restored_positions, "Clicked tiles should be preserved"
+                    
+                    # Verify we have the expected number of tiles clicked
+                    assert len(restored_positions) == 4, f"Should have exactly 4 clicked tiles after reload, got {len(restored_positions)}"
+                    
+                finally:
+                    await browser.close()
+
     
     @pytest.mark.asyncio
     async def test_state_persists_across_sessions(self):

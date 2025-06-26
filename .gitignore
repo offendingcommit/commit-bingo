@@ -57,3 +57,5 @@ poetry.lock
 
 # Game state persistence file
 game_state.json
+coverage.xml
+
