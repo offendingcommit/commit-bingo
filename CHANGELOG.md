@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v1.2.1 (2025-06-26)
+
+### Bug Fixes
+
+- Update gitignore and test configurations
+  ([`a523af0`](https://github.com/offendingcommit/commit-bingo/commit/a523af091245f34e0909cd12164b956a3f464525))
+
+- Add game_state.json to gitignore for state persistence - Update CLAUDE.md with memory management
+  protocols - Fix hot reload integration test indentation error
+
+
 ## v1.2.0 (2025-06-22)
 
 ### Bug Fixes
